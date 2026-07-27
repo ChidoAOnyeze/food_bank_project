@@ -67,12 +67,24 @@ def bi_objective_routing(depot, locations, n_trucks):
     dfs_tour = dfs_order_by_weight(mst, depot)
     dfs_tour.remove(depot) # Exclude depot for slicing
     
-    # 4. Partition into n_trucks satisfying the Makespan bound
-    segment_size = max(1, len(dfs_tour) // n_trucks)
+    # 4. Partition into exactly n_trucks satisfying the Makespan bound
     truck_routes = []
+    if not dfs_tour:
+        return truck_routes
+        
+    actual_k = min(n_trucks, len(dfs_tour))
+    chunk_size = len(dfs_tour) // actual_k
+    remainder = len(dfs_tour) % actual_k
     
-    for i in range(0, len(dfs_tour), segment_size):
-        truck_routes.append(dfs_tour[i:i+segment_size])
+    idx = 0
+    for i in range(actual_k):
+        size = chunk_size + (1 if i < remainder else 0)
+        truck_routes.append(dfs_tour[idx:idx+size])
+        idx += size
+        
+    # Pad with empty routes to enforce hard cap of exactly n_trucks
+    while len(truck_routes) < n_trucks:
+        truck_routes.append([])
         
     return truck_routes
 

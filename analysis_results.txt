@@ -1,0 +1,32 @@
+
+==================================================
+Analyzing Morning Stops (137 stops)
+==================================================
+Using Fixed Depot: (-73.87299938, 40.80594755)
+Actual Number of Trucks: 30
+[Actual]        Total Dist: 7.9659 | Makespan: 0.5198 | Latency: 20.8046 (Used 30 trucks)
+  -> Stops per truck: [6, 6, 4, 6, 2, 6, 4, 7, 6, 5, 7, 6, 6, 6, 10, 2, 5, 1, 1, 1, 6, 3, 1, 8, 5, 2, 4, 6, 4, 1]
+[Min-Max mTSP]  Total Dist: 5.4457 | Makespan: 0.5198 | Latency: 9.6790 (Used 30 trucks)
+  -> Stops per truck: [4, 1, 8, 3, 6, 7, 4, 5, 5, 5, 2, 3, 3, 2, 4, 2, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+[CVRP ITP]      Total Dist: 7.6168 | Makespan: 0.5730 | Latency: 20.1838 (Used 30 trucks)
+  -> Stops per truck: [4, 2, 3, 3, 2, 5, 12, 11, 6, 6, 3, 1, 8, 2, 2, 6, 6, 7, 8, 4, 6, 3, 7, 7, 6, 3, 4, 0, 0, 0]
+[MLP Geometric] Total Dist: 9.2953 | Makespan: 0.5732 | Latency: 20.7907 (Used 30 trucks)
+  -> Stops per truck: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+[Bi-Objective]  Total Dist: 8.5102 | Makespan: 0.5149 | Latency: 9.3190 (Used 30 trucks)
+  -> Stops per truck: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+
+==================================================
+Analyzing Afternoon Stops (16 stops)
+==================================================
+Using Fixed Depot: (-73.87299938, 40.80594755)
+Actual Number of Trucks: 8
+[Actual]        Total Dist: 1.4668 | Makespan: 0.2827 | Latency: 1.4247 (Used 8 trucks)
+  -> Stops per truck: [1, 2, 2, 1, 2, 2, 4, 2]
+[Min-Max mTSP]  Total Dist: 1.1679 | Makespan: 0.3143 | Latency: 0.9891 (Used 8 trucks)
+  -> Stops per truck: [3, 2, 2, 2, 1, 0, 0, 1]
+[CVRP ITP]      Total Dist: 1.6977 | Makespan: 0.3785 | Latency: 1.8490 (Used 8 trucks)
+  -> Stops per truck: [6, 1, 1, 3, 2, 2, 1, 0]
+[MLP Geometric] Total Dist: 1.4687 | Makespan: 0.2827 | Latency: 1.4124 (Used 8 trucks)
+  -> Stops per truck: [2, 2, 2, 2, 2, 2, 2, 2]
+[Bi-Objective]  Total Dist: 1.6009 | Makespan: 0.2771 | Latency: 0.9496 (Used 8 trucks)
+  -> Stops per truck: [2, 2, 2, 1, 1, 1, 1, 1]
