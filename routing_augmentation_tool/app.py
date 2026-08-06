@@ -172,9 +172,17 @@ st.title("Route Optimization & GUI")
 st.markdown("""
 Upload a CSV file containing your deliveries. 
 **Required columns**: `Name`, `Longitude`, `Latitude`, `Rt`, `Food Pallets`, `Pet Food Pallets`, `Chemical Pallets`.
-Optional columns: `Weight`, `route_seq`
-*The first row in the file will be treated as the Depot (Node 0).*
+Optional columns: `Weight`, `seq`
+*The Depot location can be configured in the sidebar.*
 """)
+
+st.sidebar.header("Depot Location")
+# HARDCODE DEFAULT DEPOT LOCATION HERE:
+default_depot_lat = 40.7128
+default_depot_lng = -74.0060
+
+depot_lat = st.sidebar.number_input("Depot Latitude", value=default_depot_lat, format="%.6f")
+depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, format="%.6f")
 
 st.sidebar.header("Objective Weights")
 st.sidebar.markdown(
@@ -199,15 +207,15 @@ if uploaded_file is not None:
         st.error(f"Missing required columns. Found columns: {list(df.columns)}")
     else:
         # Pre-process: group by location to merge deliveries
-        if 'route_seq' not in df.columns:
-            df['route_seq'] = df.index
+        if 'seq' not in df.columns:
+            df['seq'] = df.index
             
         agg_funcs = {
             'Food Pallets': 'sum',
             'Pet Food Pallets': 'sum',
             'Chemical Pallets': 'sum',
             'Rt': 'first',
-            'route_seq': 'min'
+            'seq': 'min'
         }
         if 'Weight' in df.columns:
             agg_funcs['Weight'] = 'sum'
@@ -220,12 +228,11 @@ if uploaded_file is not None:
         
         grouped['Total Pallets'] = grouped.apply(calc_pallets, axis=1)
         
-        # Sort by Rt and route_seq to build initial routes in correct order
-        grouped = grouped.sort_values(by=['Rt', 'route_seq']).reset_index(drop=True)
+        # Sort by Rt and seq to build initial routes in correct order
+        grouped = grouped.sort_values(by=['Rt', 'seq']).reset_index(drop=True)
         
-        # Determine Depot from the very first row of the original uploaded df
-        depot_row = df.iloc[0]
-        depot_coords = (depot_row['Latitude'], depot_row['Longitude'])
+        # Determine Depot from the sidebar inputs
+        depot_coords = (depot_lat, depot_lng)
         
         st.subheader("Trucks Configuration")
         unique_rts = grouped['Rt'].unique()
