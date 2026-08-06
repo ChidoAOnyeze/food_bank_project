@@ -203,8 +203,11 @@ if uploaded_file is not None:
     st.dataframe(df.head(10))
     
     required_cols = ['Name', 'Longitude', 'Latitude', 'Rt', 'Food Pallets', 'Pet Food Pallets', 'Chemical Pallets']
-    if not all(c in df.columns for c in required_cols):
-        st.error(f"Missing required columns. Found columns: {list(df.columns)}")
+    missing_cols = [c for c in required_cols if c not in df.columns]
+    if missing_cols:
+        st.error(
+            f"Missing required columns: {missing_cols}. Found columns: {list(df.columns)}"
+        )
     else:
         # Pre-process: group by location to merge deliveries
         if 'seq' not in df.columns:
