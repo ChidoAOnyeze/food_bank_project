@@ -1,0 +1,6 @@
+Name,Weight,Longitude,Latitude,Rt,Food Pallets,Pet Food Pallets,Chemical Pallets,route_seq
+Depot,0,-74.0060,40.7128,TruckA,0,0,0,0
+Store 1,100,-74.0020,40.7150,TruckA,1.5,0.2,0.1,1
+Store 1,50,-74.0020,40.7150,TruckA,0.5,0,0,2
+Store 2,200,-74.0000,40.7180,TruckA,3,1,0,3
+Store 3,150,-74.0080,40.7110,TruckB,2,0,1,1

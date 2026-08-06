@@ -1,0 +1,43 @@
+=== Date: 12/2/2025 0:00 (Trucks: 17, Stops: 45) ===
+[Actual] Dist: 5.5254 | Makespan: 0.6916 | Latency: 9.1188
+[Min-Max mTSP] Dist: 4.7930 | Makespan: 0.5731 | Latency: 6.4663
+[CVRP ITP] Dist: 5.1015 | Makespan: 0.6925 | Latency: 7.2463
+[MLP Geometric] Dist: 5.2940 | Makespan: 0.5858 | Latency: 6.3051
+[Bi-Objective] Dist: 5.3225 | Makespan: 0.5835 | Latency: 6.2646
+
+=== Date: 12/3/2025 0:00 (Trucks: 25, Stops: 60) ===
+[Actual] Dist: 7.1561 | Makespan: 0.5198 | Latency: 10.1238
+[Min-Max mTSP] Dist: 5.0448 | Makespan: 0.5198 | Latency: 8.0674
+[CVRP ITP] Dist: 8.0104 | Makespan: 0.5149 | Latency: 7.9024
+[MLP Geometric] Dist: 7.3088 | Makespan: 0.5568 | Latency: 8.4623
+[Bi-Objective] Dist: 7.3240 | Makespan: 0.5184 | Latency: 7.9473
+
+=== Date: 12/4/2025 0:00 (Trucks: 21, Stops: 57) ===
+[Actual] Dist: 6.6776 | Makespan: 0.4889 | Latency: 9.5912
+[Min-Max mTSP] Dist: 4.5612 | Makespan: 0.4738 | Latency: 8.2218
+[CVRP ITP] Dist: 7.3726 | Makespan: 0.4771 | Latency: 7.2899
+[MLP Geometric] Dist: 6.0275 | Makespan: 0.5154 | Latency: 7.7248
+[Bi-Objective] Dist: 6.1041 | Makespan: 0.4771 | Latency: 8.0764
+
+=== Competitive Ratios (Realized / Algorithm) Statistics ===
+
+Algorithm: Min-Max mTSP
+  - Dist: Mean=1.3451, Median=1.4185, Min=1.1528, Max=1.4640, Std=0.1681
+  - Makespan: Mean=1.0796, Median=1.0319, Min=1.0000, Max=1.2068, Std=0.1113
+  - Latency: Mean=1.2772, Median=1.2549, Min=1.1666, Max=1.4102, Std=0.1233
+
+Algorithm: CVRP ITP
+  - Dist: Mean=0.9607, Median=0.9057, Min=0.8933, Max=1.0831, Std=0.1062
+  - Makespan: Mean=1.0110, Median=1.0096, Min=0.9986, Max=1.0247, Std=0.0131
+  - Latency: Mean=1.2851, Median=1.2811, Min=1.2584, Max=1.3157, Std=0.0288
+
+Algorithm: MLP Geometric
+  - Dist: Mean=1.0436, Median=1.0437, Min=0.9791, Max=1.1079, Std=0.0644
+  - Makespan: Mean=1.0209, Median=0.9486, Min=0.9336, Max=1.1805, Std=0.1384
+  - Latency: Mean=1.2947, Median=1.2416, Min=1.1963, Max=1.4463, Std=0.1332
+
+Algorithm: Bi-Objective
+  - Dist: Mean=1.0364, Median=1.0381, Min=0.9771, Max=1.0940, Std=0.0585
+  - Makespan: Mean=1.0709, Median=1.0247, Min=1.0029, Max=1.1853, Std=0.0996
+  - Latency: Mean=1.3057, Median=1.2739, Min=1.1876, Max=1.4556, Std=0.1368
+
