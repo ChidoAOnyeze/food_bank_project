@@ -9,7 +9,7 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import itertools
 
-def generate_relocate_moves(routes):
+def generate_relocate_moves(routes, truck_names, node_names):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
@@ -23,11 +23,13 @@ def generate_relocate_moves(routes):
                     new_routes = [list(r) for r in routes]
                     new_routes[r1].pop(i)
                     new_routes[r2].insert(j, node)
-                    desc = f"Relocate node {node} from vehicle {r1} to vehicle {r2} at pos {j}"
+                    
+                    target_truck = truck_names[r2] if r1 != r2 else f"{truck_names[r2]} (different position)"
+                    desc = f"Move '{node_names[node]}' from {truck_names[r1]} to {target_truck}"
                     moves.append((new_routes, desc))
     return moves
 
-def generate_swap_moves(routes):
+def generate_swap_moves(routes, truck_names, node_names):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
@@ -40,11 +42,11 @@ def generate_swap_moves(routes):
                     new_routes = [list(r) for r in routes]
                     new_routes[r1][i] = node2
                     new_routes[r2][j] = node1
-                    desc = f"Swap node {node1} (vehicle {r1}) with node {node2} (vehicle {r2})"
+                    desc = f"Swap the deliveries for '{node_names[node1]}' (on {truck_names[r1]}) and '{node_names[node2]}' (on {truck_names[r2]})"
                     moves.append((new_routes, desc))
     return moves
 
-def generate_2opt_moves(routes):
+def generate_2opt_moves(routes, truck_names, node_names):
     moves = []
     num_routes = len(routes)
     for r in range(num_routes):
@@ -56,11 +58,11 @@ def generate_2opt_moves(routes):
                     continue # Already covered by adjacent swap
                 new_routes = [list(rt) for rt in routes]
                 new_routes[r] = route[:i] + route[i:j+1][::-1] + route[j+1:]
-                desc = f"2-Opt (Uncross) on vehicle {r}: Reverse path between node {route[i]} and node {route[j]}"
+                desc = f"Reorder the stops on {truck_names[r]} (reverse the sequence between '{node_names[route[i]]}' and '{node_names[route[j]]}') to uncross the route"
                 moves.append((new_routes, desc))
     return moves
 
-def generate_cross_exchange_moves(routes):
+def generate_cross_exchange_moves(routes, truck_names, node_names):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
@@ -79,11 +81,14 @@ def generate_cross_exchange_moves(routes):
                     new_routes[r1] = routes[r1][:i] + tail2
                     new_routes[r2] = routes[r2][:j] + tail1
                     
-                    desc = f"Inter-route 2-Opt (Uncross Overlap) between vehicle {r1} (after pos {i}) and vehicle {r2} (after pos {j})"
+                    n1 = f"'{node_names[routes[r1][i-1]]}'" if i > 0 else "the start"
+                    n2 = f"'{node_names[routes[r2][j-1]]}'" if j > 0 else "the start"
+                    
+                    desc = f"Exchange the end-portions of {truck_names[r1]} (after {n1}) and {truck_names[r2]} (after {n2}) to untangle them"
                     moves.append((new_routes, desc))
     return moves
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, makespan_coef=0, latency_coef=0):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
@@ -132,19 +137,47 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, makesp
     initial_cost = initial_solution.ObjectiveValue()
 
     # Analyze local changes
-    moves = (generate_relocate_moves(initial_routes) + 
-             generate_swap_moves(initial_routes) + 
-             generate_2opt_moves(initial_routes) + 
-             generate_cross_exchange_moves(initial_routes))
-    evaluated_moves = []
+    moves = (generate_relocate_moves(initial_routes, truck_names, node_names) + 
+             generate_swap_moves(initial_routes, truck_names, node_names) + 
+             generate_2opt_moves(initial_routes, truck_names, node_names) + 
+             generate_cross_exchange_moves(initial_routes, truck_names, node_names))
+    top_moves = []
+    total_improvements_found = 0
+    
     for new_routes, desc in moves:
         sol = routing.ReadAssignmentFromRoutes(new_routes, True)
         if sol:
             cost = sol.ObjectiveValue()
-            if initial_cost - cost > 0:
-                evaluated_moves.append((initial_cost - cost, cost, desc))
-    evaluated_moves.sort(key=lambda x: x[0], reverse=True)
-    top_moves = evaluated_moves[:5]
+            savings = initial_cost - cost
+            if savings > 0:
+                total_improvements_found += 1
+                added_to_top = False
+                
+                if len(top_moves) < 5 or savings > top_moves[-1][0]:
+                    top_moves.append((savings, cost, desc))
+                    top_moves.sort(key=lambda x: x[0], reverse=True)
+                    top_moves = top_moves[:5]
+                    added_to_top = True
+                    
+                # Throttle UI updates to either when top 5 changes, or every 10 improvements to avoid lag
+                if ui_container and (added_to_top or total_improvements_found % 10 == 0):
+                    ui_container.empty()
+                    with ui_container.container():
+                        import streamlit as st
+                        st.write(f"*(Testing local neighborhood... found **{total_improvements_found}** total improvements so far)*")
+                        for rank, (imp, c, d) in enumerate(top_moves):
+                            pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
+                            st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
+                            
+    # Final flush to UI to ensure the exact final count is displayed
+    if ui_container:
+        ui_container.empty()
+        with ui_container.container():
+            import streamlit as st
+            st.write(f"*(Finished evaluating. Found **{total_improvements_found}** total improvements)*")
+            for rank, (imp, c, d) in enumerate(top_moves):
+                pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
+                st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
 
     # Solve
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
@@ -152,6 +185,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, makesp
     search_parameters.time_limit.seconds = 5
 
     solution = routing.SolveFromAssignmentWithParameters(initial_solution, search_parameters)
+
     improved_routes = []
     if solution:
         for vehicle_id in range(data['num_vehicles']):
@@ -178,11 +212,11 @@ Optional columns: `Weight`, `seq`
 
 st.sidebar.header("Depot Location")
 # HARDCODE DEFAULT DEPOT LOCATION HERE:
-default_depot_lat = 40.7128
-default_depot_lng = -74.0060
+default_depot_lat = 40.80594755
+default_depot_lng = -73.87299938
 
-depot_lat = st.sidebar.number_input("Depot Latitude", value=default_depot_lat, format="%.6f")
-depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, format="%.6f")
+depot_lat = st.sidebar.number_input("Depot Latitude", value=default_depot_lat, format="%.8f")
+depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, format="%.8f")
 
 st.sidebar.header("Objective Weights")
 st.sidebar.markdown(
@@ -199,8 +233,13 @@ uploaded_file = st.file_uploader("Upload Stops CSV", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
+    
+    # Safely handle 'Seq' vs 'seq' column casing
+    if 'Seq' in df.columns and 'seq' not in df.columns:
+        df = df.rename(columns={'Seq': 'seq'})
+        
     st.subheader("Input Data")
-    st.dataframe(df.head(10))
+    st.dataframe(df)
     
     required_cols = ['Name', 'Longitude', 'Latitude', 'Rt', 'Food Pallets', 'Pet Food Pallets', 'Chemical Pallets']
     missing_cols = [c for c in required_cols if c not in df.columns]
@@ -239,19 +278,25 @@ if uploaded_file is not None:
         
         st.subheader("Trucks Configuration")
         unique_rts = grouped['Rt'].unique()
+        
+        # Calculate assigned load per route from the grouped data
+        route_loads = grouped.groupby('Rt')['Total Pallets'].sum()
+        
         truck_df = pd.DataFrame({
             "Name": unique_rts,
+            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
             "Capacity in Pallets": [20] * len(unique_rts)
         })
         
         st.markdown("Adjust the capacities for each truck:")
-        edited_trucks = st.data_editor(truck_df, num_rows="dynamic")
+        edited_trucks = st.data_editor(truck_df, num_rows="dynamic", disabled=["Initial Load"])
         truck_names = edited_trucks["Name"].tolist()
         vehicle_capacities = [int(c) for c in edited_trucks["Capacity in Pallets"].tolist()]
         
         # Build locations and demands lists
         locations = [depot_coords]
         demands = [0]
+        node_names = ["Depot"]
         coord_to_node = {depot_coords: 0}
         
         for _, row in grouped.iterrows():
@@ -260,7 +305,19 @@ if uploaded_file is not None:
                 coord_to_node[coord] = len(locations)
                 locations.append(coord)
                 demands.append(int(row['Total Pallets']))
+                node_names.append(row['Name'])
                 
+        total_demand = sum(demands)
+        total_capacity = sum(vehicle_capacities)
+        
+        cap_col1, cap_col2 = st.columns(2)
+        cap_col1.metric("Total Pallets Needed (Demand)", total_demand)
+        
+        if total_capacity < total_demand:
+            cap_col2.metric("Total Truck Capacity", total_capacity, "-Insufficient Capacity", delta_color="normal")
+        else:
+            cap_col2.metric("Total Truck Capacity", total_capacity)
+
         # Build initial routes based on the trucks configuration
         initial_routes = [[] for _ in truck_names]
         truck_name_to_idx = {name: idx for idx, name in enumerate(truck_names)}
@@ -280,13 +337,33 @@ if uploaded_file is not None:
                     
         st.info("Parsing completed. Running route optimization (this will take ~5 seconds)...")
         
+        st.subheader("Live Feed: Top 5 Local Improvements on Initial Route")
+        feed_container = st.empty()
+        
         with st.spinner("Optimizing routes..."):
             init_cost, top_moves, final_cost, improved_routes = solve_routing(
-                locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight
+                locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container
             )
 
         if init_cost is None:
-            st.error("Failed to load the initial routes. Ensure initial assignment doesn't violate truck capacity!")
+            st.error("Failed to load the initial routes. The starting assignment violates constraints.")
+            
+            # Show specific capacity violations
+            violations = []
+            for i, route in enumerate(initial_routes):
+                truck_name = truck_names[i]
+                capacity = vehicle_capacities[i]
+                load = sum(demands[node] for node in route)
+                if load > capacity:
+                    violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
+            
+            if violations:
+                st.warning("### 🚨 Capacity Violations Found in Initial Data:")
+                for v in violations:
+                    st.write(f"- {v}")
+                st.info("Please adjust the capacities in the 'Trucks Configuration' table above, or modify your CSV route assignments so they fit.")
+            else:
+                st.write("No capacity violations detected. Check other potential constraint violations.")
         else:
             if init_cost > 0:
                 total_pct = ((init_cost - final_cost) / init_cost) * 100
@@ -294,13 +371,8 @@ if uploaded_file is not None:
             else:
                 st.write("No initial cost to compare.")
 
-            st.subheader("Top 5 Local Improvements on Initial Route")
-            if top_moves:
-                for i, (imp, cost, desc) in enumerate(top_moves):
-                    pct = (imp / init_cost) * 100 if init_cost > 0 else 0
-                    st.write(f"**{i+1}.** {desc} (Improves by {pct:.1f}%)")
-            else:
-                st.write("No single-node moves improve the objective.")
+            if not top_moves:
+                feed_container.write("No single-node moves improve the objective.")
 
             st.subheader("Route Visualization")
             show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
