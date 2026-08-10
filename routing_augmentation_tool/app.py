@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
+from folium.plugins import PolyLineTextPath
 import math
 from streamlit_folium import st_folium
 from geopy.distance import geodesic
@@ -88,7 +89,7 @@ def generate_cross_exchange_moves(routes, truck_names, node_names):
                     moves.append((new_routes, desc))
     return moves
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
@@ -127,7 +128,17 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
     def demand_callback(from_index):
         return data['demands'][manager.IndexToNode(from_index)]
     demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-    routing.AddDimensionWithVehicleCapacity(demand_callback_index, 0, data['vehicle_capacities'], True, 'Capacity')
+    if allow_overcapacity:
+        large_caps = [1000000] * data['num_vehicles']
+        routing.AddDimensionWithVehicleCapacity(demand_callback_index, 0, large_caps, True, 'Capacity')
+        capacity_dimension = routing.GetDimensionOrDie('Capacity')
+        penalty_cost = 1000000  # High penalty per pallet over capacity
+        for vehicle_id in range(data['num_vehicles']):
+            end_index = routing.End(vehicle_id)
+            actual_capacity = data['vehicle_capacities'][vehicle_id]
+            capacity_dimension.SetCumulVarSoftUpperBound(end_index, actual_capacity, penalty_cost)
+    else:
+        routing.AddDimensionWithVehicleCapacity(demand_callback_index, 0, data['vehicle_capacities'], True, 'Capacity')
 
     # Read Initial Assignment
     initial_solution = routing.ReadAssignmentFromRoutes(initial_routes, True)
@@ -143,8 +154,14 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
              generate_cross_exchange_moves(initial_routes, truck_names, node_names))
     top_moves = []
     total_improvements_found = 0
+    seen_states = set()
     
     for new_routes, desc in moves:
+        state_hash = tuple(tuple(r) for r in new_routes)
+        if state_hash in seen_states:
+            continue
+        seen_states.add(state_hash)
+        
         sol = routing.ReadAssignmentFromRoutes(new_routes, True)
         if sol:
             cost = sol.ObjectiveValue()
@@ -154,7 +171,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                 added_to_top = False
                 
                 if len(top_moves) < 5 or savings > top_moves[-1][0]:
-                    top_moves.append((savings, cost, desc))
+                    top_moves.append((savings, cost, desc, new_routes))
                     top_moves.sort(key=lambda x: x[0], reverse=True)
                     top_moves = top_moves[:5]
                     added_to_top = True
@@ -165,9 +182,12 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                     with ui_container.container():
                         import streamlit as st
                         st.write(f"*(Testing local neighborhood... found **{total_improvements_found}** total improvements so far)*")
-                        for rank, (imp, c, d) in enumerate(top_moves):
+                        for rank, (imp, c, d, _) in enumerate(top_moves):
                             pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
                             st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
+                            
+                if test_mode and total_improvements_found >= 200:
+                    break
                             
     # Final flush to UI to ensure the exact final count is displayed
     if ui_container:
@@ -175,7 +195,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
         with ui_container.container():
             import streamlit as st
             st.write(f"*(Finished evaluating. Found **{total_improvements_found}** total improvements)*")
-            for rank, (imp, c, d) in enumerate(top_moves):
+            for rank, (imp, c, d, _) in enumerate(top_moves):
                 pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
                 st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
 
@@ -229,6 +249,10 @@ latency_ui = st.sidebar.slider("Latency Penalty (Prioritize Early Arrivals)", mi
 makespan_weight = makespan_ui * 10
 latency_weight = latency_ui * 10
 
+st.sidebar.header("Testing")
+test_mode = st.sidebar.toggle("Test Mode (Limit to 200 improvements)", value=False)
+allow_overcapacity = st.sidebar.toggle("Allow Over-Capacity (Soft Constraint)", value=False)
+
 uploaded_file = st.file_uploader("Upload Stops CSV", type=["csv"])
 
 if uploaded_file is not None:
@@ -238,8 +262,8 @@ if uploaded_file is not None:
     if 'Seq' in df.columns and 'seq' not in df.columns:
         df = df.rename(columns={'Seq': 'seq'})
         
-    st.subheader("Input Data")
-    st.dataframe(df)
+    with st.expander("View Raw Input Data", expanded=False):
+        st.dataframe(df)
     
     required_cols = ['Name', 'Longitude', 'Latitude', 'Rt', 'Food Pallets', 'Pet Food Pallets', 'Chemical Pallets']
     missing_cols = [c for c in required_cols if c not in df.columns]
@@ -276,20 +300,20 @@ if uploaded_file is not None:
         # Determine Depot from the sidebar inputs
         depot_coords = (depot_lat, depot_lng)
         
-        st.subheader("Trucks Configuration")
-        unique_rts = grouped['Rt'].unique()
-        
-        # Calculate assigned load per route from the grouped data
-        route_loads = grouped.groupby('Rt')['Total Pallets'].sum()
-        
-        truck_df = pd.DataFrame({
-            "Name": unique_rts,
-            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
-            "Capacity in Pallets": [20] * len(unique_rts)
-        })
-        
-        st.markdown("Adjust the capacities for each truck:")
-        edited_trucks = st.data_editor(truck_df, num_rows="dynamic", disabled=["Initial Load"])
+        with st.expander("Trucks Configuration", expanded=False):
+            unique_rts = grouped['Rt'].unique()
+            
+            # Calculate assigned load per route from the grouped data
+            route_loads = grouped.groupby('Rt')['Total Pallets'].sum()
+            
+            truck_df = pd.DataFrame({
+                "Name": unique_rts,
+                "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
+                "Capacity in Pallets": [25] * len(unique_rts)
+            })
+            
+            st.markdown("Adjust the capacities for each truck:")
+            edited_trucks = st.data_editor(truck_df, num_rows="dynamic", disabled=["Initial Load"])
         truck_names = edited_trucks["Name"].tolist()
         vehicle_capacities = [int(c) for c in edited_trucks["Capacity in Pallets"].tolist()]
         
@@ -335,15 +359,23 @@ if uploaded_file is not None:
                 if not initial_routes[t_idx] or initial_routes[t_idx][-1] != node_id:
                     initial_routes[t_idx].append(node_id)
                     
-        st.info("Parsing completed. Running route optimization (this will take ~5 seconds)...")
+        st.info("Parsing completed. Preparing routing engine...")
         
-        st.subheader("Live Feed: Top 5 Local Improvements on Initial Route")
-        feed_container = st.empty()
+        # Check if parameters changed to avoid re-running when just interacting with UI
+        current_params = (locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight, test_mode, allow_overcapacity)
         
-        with st.spinner("Optimizing routes..."):
-            init_cost, top_moves, final_cost, improved_routes = solve_routing(
-                locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container
-            )
+        if 'last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params:
+            st.subheader("Live Feed: Top 5 Local Improvements on Initial Route")
+            feed_container = st.empty()
+            
+            with st.spinner("Optimizing routes..."):
+                results = solve_routing(
+                    locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container, test_mode=test_mode, allow_overcapacity=allow_overcapacity
+                )
+            st.session_state['optimization_results'] = results
+            st.session_state['last_run_params'] = current_params
+        
+        init_cost, top_moves, final_cost, improved_routes = st.session_state['optimization_results']
 
         if init_cost is None:
             st.error("Failed to load the initial routes. The starting assignment violates constraints.")
@@ -365,9 +397,36 @@ if uploaded_file is not None:
             else:
                 st.write("No capacity violations detected. Check other potential constraint violations.")
         else:
+            if allow_overcapacity:
+                violations = []
+                for i, route in enumerate(improved_routes):
+                    if not route: continue
+                    truck_name = truck_names[i]
+                    capacity = vehicle_capacities[i]
+                    load = sum(demands[node] for node in route)
+                    if load > capacity:
+                        violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
+                if violations:
+                    st.warning("### ⚠️ Some trucks are still over capacity (Soft Constraint Active)")
+                    for v in violations:
+                        st.write(f"- {v}")
+
             if init_cost > 0:
-                total_pct = ((init_cost - final_cost) / init_cost) * 100
-                st.metric("Total Route Improvement", f"{total_pct:.1f}%")
+                # Check if the initial routes actually had any capacity violations
+                initial_violations = False
+                for i, route in enumerate(initial_routes):
+                    if not route: continue
+                    if sum(demands[node] for node in route) > vehicle_capacities[i]:
+                        initial_violations = True
+                        break
+                        
+                had_penalties = allow_overcapacity and initial_violations
+
+                if not had_penalties:
+                    total_pct = ((init_cost - final_cost) / init_cost) * 100
+                    st.metric("Total Route Improvement", f"{total_pct:.1f}%")
+                else:
+                    st.metric("Penalty Score Improvement (Soft Constraints)", f"{init_cost - final_cost} points")
             else:
                 st.write("No initial cost to compare.")
 
@@ -375,9 +434,17 @@ if uploaded_file is not None:
                 feed_container.write("No single-node moves improve the objective.")
 
             st.subheader("Route Visualization")
-            show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
+            
+            # Selection box for improvements
+            if top_moves:
+                if not locals().get('had_penalties', False):
+                    options = ["Show Full OR-Tools Optimization"] + [f"Move {i+1} (Improves by {((m[0] / init_cost) * 100 if init_cost > 0 else 0):.1f}%): {m[2]}" for i, m in enumerate(top_moves)]
+                else:
+                    options = ["Show Full OR-Tools Optimization"] + [f"Move {i+1} (Fixes Capacity Penalty): {m[2]}" for i, m in enumerate(top_moves)]
+                selected_option = st.selectbox("Visualize a specific route improvement:", options)
+            else:
+                selected_option = "Show Full OR-Tools Optimization"
 
-            # Map Visualization
             center_lat, center_lng = locations[0]
             m = folium.Map(location=[center_lat, center_lng], zoom_start=13)
             
@@ -386,31 +453,27 @@ if uploaded_file is not None:
                       'darkpurple', 'pink', 'lightblue', 'lightgreen',
                       'gray', 'black', 'lightgray']
 
-            # Add Markers
-            for idx, (lat, lng) in enumerate(locations):
-                if idx == 0:
-                    folium.Marker([lat, lng], popup="Depot", icon=folium.Icon(color="black", icon="star")).add_to(m)
-                else:
-                    demand = demands[idx]
-                    folium.Marker([lat, lng], popup=f"Node {idx} (Pallets: {demand})", icon=folium.Icon(color="blue", icon="info-sign")).add_to(m)
-
-            # Plot Original Routes (Always drawn, Solid)
+            # Map each node to its original route for marker coloring
+            node_to_route_idx = {}
             for route_idx, route in enumerate(initial_routes):
-                if not route:
-                    continue
-                route_coords = [locations[0]] + [locations[n] for n in route] + [locations[0]]
-                color = colors[route_idx % len(colors)]
-                folium.PolyLine(
-                    route_coords,
-                    color=color,
-                    weight=5,
-                    opacity=0.8,
-                    popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
-                ).add_to(m)
+                for n in route:
+                    node_to_route_idx[n] = route_idx
 
-            # Plot Improved Routes (if toggled, Dotted)
-            if show_proposed:
-                for route_idx, route in enumerate(improved_routes):
+            if selected_option == "Show Full OR-Tools Optimization":
+                show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
+                
+                # Add All Markers
+                for idx, (lat, lng) in enumerate(locations):
+                    if idx == 0:
+                        folium.Marker([lat, lng], popup="Depot", icon=folium.Icon(color="black", icon="star")).add_to(m)
+                    else:
+                        demand = demands[idx]
+                        orig_route = node_to_route_idx.get(idx, 0)
+                        marker_color = colors[orig_route % len(colors)]
+                        folium.Marker([lat, lng], popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
+
+                # Plot All Original Routes (Always drawn, Solid)
+                for route_idx, route in enumerate(initial_routes):
                     if not route:
                         continue
                     route_coords = [locations[0]] + [locations[n] for n in route] + [locations[0]]
@@ -418,10 +481,84 @@ if uploaded_file is not None:
                     folium.PolyLine(
                         route_coords,
                         color=color,
-                        weight=4,
-                        opacity=0.9,
-                        dash_array='5, 10', # Dotted line
-                        popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
+                        weight=5,
+                        opacity=0.8,
+                        popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
                     ).add_to(m)
+
+                # Plot All Improved Routes (if toggled, Dotted)
+                if show_proposed:
+                    for route_idx, route in enumerate(improved_routes):
+                        if not route:
+                            continue
+                        route_coords = [locations[0]] + [locations[n] for n in route] + [locations[0]]
+                        color = colors[route_idx % len(colors)]
+                        folium.PolyLine(
+                            route_coords,
+                            color=color,
+                            weight=4,
+                            opacity=0.9,
+                            dash_array='5, 10', # Dotted line
+                            popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
+                        ).add_to(m)
+            else:
+                # User selected a specific local move
+                move_idx = int(selected_option.split(":")[0].replace("Move ", "")) - 1
+                selected_new_routes = top_moves[move_idx][3]
+                
+                # Identify changed routes
+                changed_route_indices = []
+                for i in range(len(initial_routes)):
+                    if initial_routes[i] != selected_new_routes[i]:
+                        changed_route_indices.append(i)
+                        
+                # Assign collision-free colors for the involved routes
+                local_colors = {}
+                used_colors = set()
+                for idx in changed_route_indices:
+                    desired_color = colors[idx % len(colors)]
+                    if desired_color in used_colors:
+                        for fallback in colors:
+                            if fallback not in used_colors:
+                                desired_color = fallback
+                                break
+                    used_colors.add(desired_color)
+                    local_colors[idx] = desired_color
+                        
+                # Add Markers ONLY for nodes in these routes, plus depot
+                nodes_to_draw = {0}
+                for idx in changed_route_indices:
+                    nodes_to_draw.update(initial_routes[idx])
+                    nodes_to_draw.update(selected_new_routes[idx])
+                    
+                for idx, (lat, lng) in enumerate(locations):
+                    if idx in nodes_to_draw:
+                        if idx == 0:
+                            folium.Marker([lat, lng], popup="Depot", icon=folium.Icon(color="black", icon="star")).add_to(m)
+                        else:
+                            demand = demands[idx]
+                            orig_route = node_to_route_idx.get(idx, 0)
+                            marker_color = local_colors.get(orig_route, colors[orig_route % len(colors)])
+                            folium.Marker([lat, lng], popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
+
+                # Draw ONLY the affected routes
+                for idx in changed_route_indices:
+                    r_color = local_colors[idx]
+                    
+                    # Solid original
+                    r_orig = initial_routes[idx]
+                    if r_orig:
+                        route_coords_orig = [locations[0]] + [locations[n] for n in r_orig] + [locations[0]]
+                        pl_orig = folium.PolyLine(route_coords_orig, color=r_color, weight=6, opacity=0.3, popup=f"Original {truck_names[idx]}")
+                        pl_orig.add_to(m)
+                        PolyLineTextPath(pl_orig, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '0.3', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
+                    
+                    # Dotted new
+                    r_new = selected_new_routes[idx]
+                    if r_new:
+                        route_coords_new = [locations[0]] + [locations[n] for n in r_new] + [locations[0]]
+                        pl_new = folium.PolyLine(route_coords_new, color=r_color, weight=5, opacity=1.0, dash_array='5, 10', popup=f"Improved {truck_names[idx]}")
+                        pl_new.add_to(m)
+                        PolyLineTextPath(pl_new, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
             st_folium(m, width=900, height=600)
