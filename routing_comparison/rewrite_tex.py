@@ -1,4 +1,6 @@
-\documentclass[11pt]{article}
+import os
+
+tex_content = r"""\documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage{geometry}
@@ -104,12 +106,11 @@ We aim to minimize a convex combination:
 \end{equation}
 for some $\lambda \in [0,1]$. Note that minimizing makespan generally creates sparse, long tours, while minimizing latency encourages dense, short ``stars'' radiating from the depot.
 
-\subsection{Implemented Algorithm: Depth-First Tree Partitioning}
+\subsection{Approximation Algorithms for Bi-Objective}
 \textbf{How it works (in simple terms):}\\
-The implemented algorithm balances both makespan and latency in three steps:
-1. \textbf{Build a Roadmap (Minimum Spanning Tree):} It creates a single ``cheapest'' roadmap (MST) connecting the depot to all deliveries.
-2. \textbf{Smart Routing for Latency:} To minimize customer wait times, the algorithm traverses this roadmap. When it reaches an intersection, it asks: \emph{``Which branch has fewer total deliveries?''} It \textbf{always visits the ``lighter'' branches first}. If you drive down a massive branch that takes hours to serve 50 houses, the 3 houses on the smaller branch are forced to wait. By knocking out the smaller branches first, you drastically reduce the total number of people kept waiting, optimizing overall latency.
-3. \textbf{Slicing for Makespan (Partitioning):} The smart traversal yields one massive, perfectly-ordered list of all locations. To ensure no single truck is overworked (satisfying makespan), the algorithm slices this ordered list into equal-sized chunks based on the exact number of trucks available.
+This algorithm builds a roadmap (a spanning tree) that connects everyone, guaranteeing that if we trace it out, no truck drives too far (satisfying the makespan). 
+To also ensure good customer wait times (latency), we have to be smart about \emph{how} the truck drives along this roadmap. Imagine the roadmap looks like a tree with many branches. If a truck drives down a very long branch with only 1 house at the end of it, all the other houses on other branches have to wait a long time. 
+The algorithm uses a ``Depth-First Search'' but with a clever rule: \textbf{always visit the ``lighter'' branches first}. If you are at an intersection, and the left turn has 3 houses on it and the right turn has 50 houses, you visit the 3 houses first, then quickly return and do the 50 houses. By knocking out the smaller branches early, fewer people in total are forced to wait for the long, time-consuming detours.
 
 \textbf{Mathematical Details:}\\
 Finding a single solution that simultaneously approximates both objectives to within a constant factor is challenging because the optimal solutions for the two objectives can be diametrically opposed. However, approximation algorithms exist to approximate the \emph{Pareto frontier}. 
@@ -120,3 +121,7 @@ A common technique is the \emph{Bicriteria Approximation}: An algorithm is an $(
 Routing $n$ trucks to service $K$ locations involves complex trade-offs between computational tractability and model fidelity. The LP relaxations for makespan (min-max mTSP) and capacity (CVRP) rely heavily on tree constraints and capacity cuts. Transitioning to latency (MLP) shifts the focus to flow and time-indexed constraints. Approximating a weighted combination of these objectives requires bicriteria techniques that balance the egalitarian nature of makespan against the utilitarian nature of latency. Future work could incorporate stochastic demands or time windows, further enriching the LP structures.
 
 \end{document}
+"""
+
+with open("routing_research.tex", "w") as f:
+    f.write(tex_content)

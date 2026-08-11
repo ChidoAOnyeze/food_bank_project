@@ -1,4 +1,6 @@
-# Approximation Algorithms and LP Relaxations for Vehicle Routing: Makespan, Latency, and Capacity Constraints
+import os
+
+markdown_content = r"""# Approximation Algorithms and LP Relaxations for Vehicle Routing: Makespan, Latency, and Capacity Constraints
 
 **Author:** AI Researcher  
 **Date:** July 2026
@@ -178,26 +180,25 @@ Instead of a strict convex combination, algorithms aim for a **Bicriteria $(\alp
 $$ \text{Makespan} \le T_{budget} $$
 *(Where $T_{budget}$ is a user-defined hard constraint).*
 
-### 5.2 Implemented Algorithm: Depth-First Tree Partitioning
+### 5.2 Approximation Algorithm: Depth-First Tree Doubling
 
 **How it works (in simple terms):**
-The implemented algorithm balances both makespan and latency in three steps:
-1. **Build a Roadmap (Minimum Spanning Tree):** It creates a single "cheapest" roadmap (MST) connecting the depot to all deliveries.
-2. **Smart Routing for Latency:** To minimize customer wait times, the algorithm traverses this roadmap. When it reaches an intersection, it asks: *"Which branch has fewer total deliveries?"* It **always visits the "lighter" branches first**. If you drive down a massive branch that takes hours to serve 50 houses, the 3 houses on the smaller branch are forced to wait. By knocking out the smaller branches first, you drastically reduce the total number of people kept waiting, optimizing overall latency.
-3. **Slicing for Makespan (Partitioning):** The smart traversal yields one massive, perfectly-ordered list of all locations. To ensure no single truck is overworked (satisfying makespan), the algorithm slices this ordered list into equal-sized chunks based on the exact number of trucks available.
+This algorithm builds a roadmap (a spanning tree) that connects everyone, guaranteeing that if we trace it out, no truck drives too far (satisfying the makespan). 
+To also ensure good customer wait times (latency), we have to be smart about *how* the truck drives along this roadmap. Imagine the roadmap looks like a tree with many branches. If a truck drives down a very long branch with only 1 house at the end of it, all the other houses on other branches have to wait a long time. 
+The algorithm uses a "Depth-First Search" but with a clever rule: **always visit the "lighter" branches first**. If you are at an intersection, and the left turn has 3 houses on it and the right turn has 50 houses, you visit the 3 houses first, then quickly return and do the 50 houses. By knocking out the smaller branches early, fewer people in total are forced to wait for the long, time-consuming detours.
 
-**Pseudo-code for the Implemented Algorithm:**
+**Pseudo-code:**
 ```text
-Algorithm: Bi-Objective-Routing(depot, locations, n_trucks)
-1. Let all_nodes = {depot} ∪ locations.
-2. Construct a Minimum Spanning Tree (MST) connecting all_nodes.
-3. For every node in the tree, calculate its "subtree weight" (the number of 
-   descendant nodes in that branch).
-4. Perform a Depth-First Search (DFS) starting at the depot. At each node, 
-   sort its children by subtree weight (ascending). Visit lighter subtrees first.
-5. The DFS traversal yields a single ordered tour of all locations.
-6. Slice this ordered tour into exactly n_trucks equal-sized contiguous chunks.
-7. Return the resulting sliced routes.
+Algorithm: Bi-Objective-Routing(V, r, T_budget)
+1. Solve the min-max mTSP using the Tour Partitioning algorithm to find a 
+   set of base trees that guarantee Makespan <= α * T_budget.
+2. To optimize latency on these assigned trees, we do not perform arbitrary 
+   Eulerian tours. Instead, perform a Depth-First Search (DFS) traversal 
+   of the trees.
+3. Order the children of each node in the DFS by the weight of their 
+   subtrees (visiting lighter subtrees first).
+4. Return the resulting DFS-ordered tours.
+```
 
 ### 5.3 Proof of the Approximation Ratio
 **Theorem 4:** *DFS-ordered tree doubling yields a Pareto-approximate frontier, specifically establishing a **(2.5, 8.49)-bicriteria approximation**.*
@@ -263,3 +264,7 @@ Routing $n$ trucks to service $K$ locations involves complex trade-offs between 
 *   Fakcharoenphol, J., Harrelson, C., & Rao, S. (2003). The k-traveling repairman problem. *ACM Transactions on Algorithms (TALG)*, 3(4), Article 40.
 *   Haimovich, M., & Rinnooy Kan, A. H. G. (1985). Bounds and heuristics for capacitated routing problems. *Mathematics of Operations Research*, 10(4), 527-542.
 *   Post, I., & Swamy, C. (2015). Linear-programming based techniques for the multi-vehicle minimum latency problem. *SODA*.
+"""
+
+with open("routing_research.md", "w") as f:
+    f.write(markdown_content)

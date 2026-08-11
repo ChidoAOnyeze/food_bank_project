@@ -1,0 +1,1 @@
+The markdown (`routing_research.md`) and LaTeX (`routing_research.tex`) reports have been updated to include simple, non-theoretical explanations for each algorithm while preserving all mathematical proofs and structures.
