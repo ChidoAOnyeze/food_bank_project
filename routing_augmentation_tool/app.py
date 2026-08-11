@@ -503,7 +503,7 @@ if uploaded_file is not None:
                         ).add_to(m)
             else:
                 # User selected a specific local move
-                move_idx = int(selected_option.split(":")[0].replace("Move ", "")) - 1
+                move_idx = int(selected_option.split(" ")[1]) - 1
                 selected_new_routes = top_moves[move_idx][3]
                 
                 # Identify changed routes
