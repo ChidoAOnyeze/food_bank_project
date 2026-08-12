@@ -1,0 +1,7 @@
+Name,Latitude,Longitude,Rt,seq,Food Pallets,Pet Food Pallets,Chemical Pallets
+Truck 1 - North A,40.830,-73.870,Truck 1,1,1,0,0
+Truck 1 - North B,40.840,-73.870,Truck 1,2,1,0,0
+Truck 1 - Way South (Bad!),40.770,-73.870,Truck 1,3,1,0,0
+Truck 2 - South A,40.780,-73.870,Truck 2,1,1,0,0
+Truck 2 - South B,40.790,-73.870,Truck 2,2,1,0,0
+Truck 2 - Way North (Bad!),40.850,-73.870,Truck 2,3,1,0,0

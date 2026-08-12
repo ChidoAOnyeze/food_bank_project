@@ -89,7 +89,7 @@ def generate_cross_exchange_moves(routes, truck_names, node_names):
                     moves.append((new_routes, desc))
     return moves
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
@@ -225,8 +225,8 @@ st.title("Route Optimization & GUI")
 
 st.markdown("""
 Upload a CSV file containing your deliveries. 
-**Required columns**: `Name`, `Longitude`, `Latitude`, `Rt`, `Food Pallets`, `Pet Food Pallets`, `Chemical Pallets`.
-Optional columns: `Weight`, `seq`
+**Required columns**: `Name`, `Longitude`, `Latitude`, `Rt`, `seq`, `Food Pallets`, `Pet Food Pallets`, `Chemical Pallets`.
+Optional columns: `Weight`
 *The Depot location can be configured in the sidebar.*
 """)
 
@@ -253,10 +253,26 @@ st.sidebar.header("Testing")
 test_mode = st.sidebar.toggle("Test Mode (Limit to 200 improvements)", value=False)
 allow_overcapacity = st.sidebar.toggle("Allow Over-Capacity (Soft Constraint)", value=False)
 
+
 uploaded_file = st.file_uploader("Upload Stops CSV", type=["csv"])
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+    import io
+    file_bytes = uploaded_file.getvalue()
+    file_hash = hash(file_bytes)
+    
+    if 'current_file_hash' not in st.session_state or st.session_state['current_file_hash'] != file_hash:
+        st.session_state['current_file_hash'] = file_hash
+        if 'accepted_routes' in st.session_state:
+            del st.session_state['accepted_routes']
+        if 'rejected_moves' in st.session_state:
+            del st.session_state['rejected_moves']
+            
+    if 'rejected_moves' not in st.session_state:
+        st.session_state['rejected_moves'] = set()
+        
+    df = pd.read_csv(io.BytesIO(file_bytes))
+
     
     # Safely handle 'Seq' vs 'seq' column casing
     if 'Seq' in df.columns and 'seq' not in df.columns:
@@ -265,7 +281,7 @@ if uploaded_file is not None:
     with st.expander("View Raw Input Data", expanded=False):
         st.dataframe(df)
     
-    required_cols = ['Name', 'Longitude', 'Latitude', 'Rt', 'Food Pallets', 'Pet Food Pallets', 'Chemical Pallets']
+    required_cols = ['Name', 'Longitude', 'Latitude', 'Rt', 'seq', 'Food Pallets', 'Pet Food Pallets', 'Chemical Pallets']
     missing_cols = [c for c in required_cols if c not in df.columns]
     if missing_cols:
         st.error(
@@ -273,8 +289,6 @@ if uploaded_file is not None:
         )
     else:
         # Pre-process: group by location to merge deliveries
-        if 'seq' not in df.columns:
-            df['seq'] = df.index
             
         agg_funcs = {
             'Food Pallets': 'sum',
@@ -342,40 +356,49 @@ if uploaded_file is not None:
         else:
             cap_col2.metric("Total Truck Capacity", total_capacity)
 
+
         # Build initial routes based on the trucks configuration
-        initial_routes = [[] for _ in truck_names]
-        truck_name_to_idx = {name: idx for idx, name in enumerate(truck_names)}
-        
-        for _, row in grouped.iterrows():
-            coord = (row['Latitude'], row['Longitude'])
-            node_id = coord_to_node[coord]
-            if node_id == 0:
-                continue
-                
-            t_name = row['Rt']
-            if t_name in truck_name_to_idx:
-                t_idx = truck_name_to_idx[t_name]
-                # avoid consecutive duplicates
-                if not initial_routes[t_idx] or initial_routes[t_idx][-1] != node_id:
-                    initial_routes[t_idx].append(node_id)
+        if 'accepted_routes' not in st.session_state:
+            initial_routes = [[] for _ in truck_names]
+            truck_name_to_idx = {name: idx for idx, name in enumerate(truck_names)}
+            
+            for _, row in grouped.iterrows():
+                coord = (row['Latitude'], row['Longitude'])
+                node_id = coord_to_node[coord]
+                if node_id == 0:
+                    continue
+                    
+                t_name = row['Rt']
+                if t_name in truck_name_to_idx:
+                    t_idx = truck_name_to_idx[t_name]
+                    # avoid consecutive duplicates
+                    if not initial_routes[t_idx] or initial_routes[t_idx][-1] != node_id:
+                        initial_routes[t_idx].append(node_id)
+            st.session_state['accepted_routes'] = initial_routes
+        else:
+            initial_routes = st.session_state['accepted_routes']
+
                     
         st.info("Parsing completed. Preparing routing engine...")
         
         # Check if parameters changed to avoid re-running when just interacting with UI
         current_params = (locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight, test_mode, allow_overcapacity)
         
-        if 'last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params:
-            st.subheader("Live Feed: Top 5 Local Improvements on Initial Route")
-            feed_container = st.empty()
-            
-            with st.spinner("Optimizing routes..."):
-                results = solve_routing(
-                    locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container, test_mode=test_mode, allow_overcapacity=allow_overcapacity
-                )
-            st.session_state['optimization_results'] = results
-            st.session_state['last_run_params'] = current_params
+
+
+        needs_optimization = ('last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params)
         
-        init_cost, top_moves, final_cost, improved_routes = st.session_state['optimization_results']
+        selected_option = "Show Full OR-Tools Optimization"
+        show_proposed = False
+        top_moves = []
+        improved_routes = []
+        init_cost = 0 # Prevent NameError, but avoid triggering init_cost > 0 logic
+        final_cost = 0
+        
+        if not needs_optimization:
+            init_cost, top_moves, final_cost, improved_routes = st.session_state['optimization_results']
+
+
 
         if init_cost is None:
             st.error("Failed to load the initial routes. The starting assignment violates constraints.")
@@ -431,7 +454,7 @@ if uploaded_file is not None:
                 st.write("No initial cost to compare.")
 
             if not top_moves:
-                feed_container.write("No single-node moves improve the objective.")
+                st.write("No single-node moves improve the objective.")
 
             st.subheader("Route Visualization")
             
@@ -470,7 +493,7 @@ if uploaded_file is not None:
                         demand = demands[idx]
                         orig_route = node_to_route_idx.get(idx, 0)
                         marker_color = colors[orig_route % len(colors)]
-                        folium.Marker([lat, lng], popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
+                        folium.Marker([lat, lng], tooltip=f"{node_names[idx]} (Pallets: {demand})", popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
 
                 # Plot All Original Routes (Always drawn, Solid)
                 for route_idx, route in enumerate(initial_routes):
@@ -483,7 +506,7 @@ if uploaded_file is not None:
                         color=color,
                         weight=5,
                         opacity=0.8,
-                        popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
+                        tooltip=f"Original Route {route_idx} ({truck_names[route_idx]})", popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
                     ).add_to(m)
 
                 # Plot All Improved Routes (if toggled, Dotted)
@@ -499,12 +522,31 @@ if uploaded_file is not None:
                             weight=4,
                             opacity=0.9,
                             dash_array='5, 10', # Dotted line
-                            popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
+                            tooltip=f"Improved Route {route_idx} ({truck_names[route_idx]})", popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
                         ).add_to(m)
             else:
+
                 # User selected a specific local move
                 move_idx = int(selected_option.split(" ")[1]) - 1
                 selected_new_routes = top_moves[move_idx][3]
+                
+                # --- NEW BUTTONS ---
+                b_col1, b_col2 = st.columns(2)
+                with b_col1:
+                    if st.button("Accept Improvement", type="primary"):
+                        st.session_state['accepted_routes'] = selected_new_routes
+                        if 'last_run_params' in st.session_state:
+                            del st.session_state['last_run_params']
+                        st.rerun()
+                with b_col2:
+                    if st.button("Reject Improvement"):
+                        st.session_state['rejected_moves'].add(top_moves[move_idx][2])
+                        if 'last_run_params' in st.session_state:
+                            del st.session_state['last_run_params']
+                        st.rerun()
+                st.write("---")
+                # -------------------
+
                 
                 # Identify changed routes
                 changed_route_indices = []
@@ -539,7 +581,7 @@ if uploaded_file is not None:
                             demand = demands[idx]
                             orig_route = node_to_route_idx.get(idx, 0)
                             marker_color = local_colors.get(orig_route, colors[orig_route % len(colors)])
-                            folium.Marker([lat, lng], popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
+                            folium.Marker([lat, lng], tooltip=f"{node_names[idx]} (Pallets: {demand})", popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
 
                 # Draw ONLY the affected routes
                 for idx in changed_route_indices:
@@ -549,7 +591,7 @@ if uploaded_file is not None:
                     r_orig = initial_routes[idx]
                     if r_orig:
                         route_coords_orig = [locations[0]] + [locations[n] for n in r_orig] + [locations[0]]
-                        pl_orig = folium.PolyLine(route_coords_orig, color=r_color, weight=6, opacity=0.3, popup=f"Original {truck_names[idx]}")
+                        pl_orig = folium.PolyLine(route_coords_orig, color=r_color, weight=6, opacity=0.3, tooltip=f"Original Route {truck_names[idx]}", popup=f"Original Route {truck_names[idx]}")
                         pl_orig.add_to(m)
                         PolyLineTextPath(pl_orig, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '0.3', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
                     
@@ -557,8 +599,51 @@ if uploaded_file is not None:
                     r_new = selected_new_routes[idx]
                     if r_new:
                         route_coords_new = [locations[0]] + [locations[n] for n in r_new] + [locations[0]]
-                        pl_new = folium.PolyLine(route_coords_new, color=r_color, weight=5, opacity=1.0, dash_array='5, 10', popup=f"Improved {truck_names[idx]}")
+                        pl_new = folium.PolyLine(route_coords_new, color=r_color, weight=5, opacity=1.0, dash_array='5, 10', tooltip=f"Improved Route {truck_names[idx]}", popup=f"Improved Route {truck_names[idx]}")
                         pl_new.add_to(m)
                         PolyLineTextPath(pl_new, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
+
             st_folium(m, width=900, height=600)
+            
+            st.markdown("### Export Updated Routes")
+            export_rows = []
+            for t_idx, route in enumerate(initial_routes):
+                truck_name = truck_names[t_idx]
+                for seq_idx, node in enumerate(route):
+                    lat, lng = locations[node]
+                    name = node_names[node]
+                    
+                    match = grouped[(grouped['Latitude'] == lat) & (grouped['Longitude'] == lng) & (grouped['Name'] == name)]
+                    if not match.empty:
+                        row_dict = match.iloc[0].to_dict()
+                        row_dict['Rt'] = truck_name
+                        row_dict['seq'] = seq_idx + 1
+                        export_rows.append(row_dict)
+                    else:
+                        export_rows.append({
+                            "Name": name, "Latitude": lat, "Longitude": lng, "Rt": truck_name, "seq": seq_idx + 1
+                        })
+                        
+            export_df = pd.DataFrame(export_rows)
+            csv_str = export_df.to_csv(index=False)
+
+            st.download_button(
+                label="Download Updated Routes CSV",
+                data=csv_str,
+                file_name="updated_routes.csv",
+                mime="text/csv"
+            )
+            
+            if needs_optimization:
+                st.subheader("Searching for Improvements...")
+                feed_container = st.empty()
+                
+                with st.spinner("Optimizing routes (map is usable while this runs)..."):
+                    results = solve_routing(
+                        locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container, test_mode=test_mode, allow_overcapacity=allow_overcapacity, rejected_moves=st.session_state.get('rejected_moves', set())
+                    )
+                st.session_state['optimization_results'] = results
+                st.session_state['last_run_params'] = current_params
+                st.rerun()
+
