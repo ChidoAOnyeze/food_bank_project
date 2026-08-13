@@ -1,3 +1,5 @@
+import threading
+import time
 import requests
 import json
 import os
@@ -236,6 +238,27 @@ def get_valhalla_distance_matrix(locations):
 
 VALHALLA_GEOM_CACHE_FILE = "valhalla_geom_cache.json"
 
+# In-Memory cache to avoid reading 2MB+ JSON files from disk repeatedly in tight loops
+_IN_MEMORY_GEOM_CACHE = {}
+
+def load_geom_cache():
+    global _IN_MEMORY_GEOM_CACHE
+    if not _IN_MEMORY_GEOM_CACHE and os.path.exists(VALHALLA_GEOM_CACHE_FILE):
+        try:
+            with open(VALHALLA_GEOM_CACHE_FILE, "r") as f:
+                _IN_MEMORY_GEOM_CACHE = json.load(f)
+        except Exception:
+            _IN_MEMORY_GEOM_CACHE = {}
+    return _IN_MEMORY_GEOM_CACHE
+
+def save_geom_cache():
+    global _IN_MEMORY_GEOM_CACHE
+    try:
+        with open(VALHALLA_GEOM_CACHE_FILE, "w") as f:
+            json.dump(_IN_MEMORY_GEOM_CACHE, f)
+    except Exception:
+        pass
+
 def decode_polyline(encoded, precision=6):
     inv = 1.0 / (10 ** precision)
     decoded = []
@@ -262,41 +285,81 @@ def decode_polyline(encoded, precision=6):
         decoded.append((lat * inv, lng * inv))
     return decoded
 
-def get_road_path(p1, p2):
-    if os.path.exists(VALHALLA_GEOM_CACHE_FILE):
-        try:
-            with open(VALHALLA_GEOM_CACHE_FILE, "r") as f:
-                geom_cache = json.load(f)
-        except Exception:
-            geom_cache = {}
-    else:
-        geom_cache = {}
+def prefetch_and_cache_routes_geometry(routes_list, locations):
+    geom_cache = load_geom_cache()
+    missing_legs = False
+    
+    for route in routes_list:
+        if not route: continue
+        stop_seq = [locations[0]] + [locations[n] for n in route] + [locations[0]]
+        
+        # Quick in-memory check
+        all_cached = True
+        for i in range(len(stop_seq) - 1):
+            k = f"{stop_seq[i][0]},{stop_seq[i][1]}|{stop_seq[i+1][0]},{stop_seq[i+1][1]}"
+            if k not in geom_cache:
+                all_cached = False
+                break
+        if all_cached:
+            continue
 
+        missing_legs = True
+        max_locs = 15
+        for start_idx in range(0, len(stop_seq) - 1, max_locs - 1):
+            sub_seq = stop_seq[start_idx : start_idx + max_locs]
+            if len(sub_seq) < 2: continue
+
+            req_locations = [{"lat": p[0], "lon": p[1]} for p in sub_seq]
+            payload = {
+                "locations": req_locations,
+                "costing": "truck",
+                "units": "kilometers"
+            }
+            
+            try:
+                resp = requests.post("https://valhalla1.openstreetmap.de/route", json=payload, timeout=15)
+                if resp.status_code == 200:
+                    legs = resp.json().get("trip", {}).get("legs", [])
+                    for l_idx, leg in enumerate(legs):
+                        p1 = sub_seq[l_idx]
+                        p2 = sub_seq[l_idx + 1]
+                        k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+                        if "shape" in leg:
+                            geom_cache[k] = decode_polyline(leg["shape"])
+                else:
+                    for l_idx in range(len(sub_seq) - 1):
+                        p1 = sub_seq[l_idx]
+                        p2 = sub_seq[l_idx + 1]
+                        k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+                        if k not in geom_cache:
+                            try:
+                                single_payload = {
+                                    "locations": [{"lat": p1[0], "lon": p1[1]}, {"lat": p2[0], "lon": p2[1]}],
+                                    "costing": "truck",
+                                    "units": "kilometers"
+                                }
+                                s_resp = requests.post("https://valhalla1.openstreetmap.de/route", json=single_payload, timeout=10)
+                                if s_resp.status_code == 200:
+                                    s_legs = s_resp.json().get("trip", {}).get("legs", [])
+                                    if s_legs and "shape" in s_legs[0]:
+                                        geom_cache[k] = decode_polyline(s_legs[0]["shape"])
+                                    else:
+                                        geom_cache[k] = [p1, p2]
+                                else:
+                                    geom_cache[k] = [p1, p2]
+                            except Exception:
+                                geom_cache[k] = [p1, p2]
+            except Exception as e:
+                print(f"Valhalla route prefetch error: {e}")
+
+    if missing_legs:
+        save_geom_cache()
+
+def get_road_path(p1, p2):
+    geom_cache = load_geom_cache()
     k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
     if k in geom_cache:
         return geom_cache[k]
-    
-    payload = {
-        "locations": [{"lat": p1[0], "lon": p1[1]}, {"lat": p2[0], "lon": p2[1]}],
-        "costing": "truck",
-        "units": "kilometers"
-    }
-    try:
-        resp = requests.post("https://valhalla1.openstreetmap.de/route", json=payload, timeout=10)
-        if resp.status_code == 200:
-            legs = resp.json().get("trip", {}).get("legs", [])
-            if legs and "shape" in legs[0]:
-                pts = decode_polyline(legs[0]["shape"])
-                geom_cache[k] = pts
-                try:
-                    with open(VALHALLA_GEOM_CACHE_FILE, "w") as f:
-                        json.dump(geom_cache, f)
-                except Exception:
-                    pass
-                return pts
-    except Exception as e:
-        print("Valhalla route geom fetch failed:", e)
-        
     return [p1, p2]
 
 def get_full_route_geometry(locations_list):
@@ -310,6 +373,26 @@ def get_full_route_geometry(locations_list):
         else:
             full_path.extend(leg_pts)
     return full_path
+
+def start_background_geometry_prefetch(top_moves, locations, limit=30):
+    """
+    Fires off a silent background daemon thread that politely downloads and caches
+    all street shapes for the top 30 candidate moves while the user is using the app.
+    """
+    def worker():
+        total_to_fetch = min(limit, len(top_moves))
+        print(f"--> [Background Prefetch] Starting geometry downloads for top {total_to_fetch} moves...")
+        for m_idx, move in enumerate(top_moves[:limit]):
+            try:
+                candidate_routes = move[3]
+                prefetch_and_cache_routes_geometry(candidate_routes, locations)
+                time.sleep(0.4) # Respectful delay between batches
+            except Exception as e:
+                print(f"--> [Background Prefetch] Exception on move {m_idx}: {e}")
+        print("--> [Background Prefetch] Completed! All top candidate moves are fully cached.")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
 
 def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None):
     # 1. Create Data Model
@@ -686,6 +769,10 @@ if uploaded_file is not None:
         
         if not needs_optimization:
             init_cost, top_moves, final_cost, improved_routes = st.session_state['optimization_results']
+            # Launch background worker for top 30 moves once per run
+            if 'background_prefetch_params' not in st.session_state or st.session_state['background_prefetch_params'] != current_params:
+                st.session_state['background_prefetch_params'] = current_params
+                start_background_geometry_prefetch(top_moves, locations, limit=30)
 
 
 
@@ -773,6 +860,8 @@ if uploaded_file is not None:
 
             if selected_option == "Show Full OR-Tools Optimization":
                 show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
+                # Prefetch all missing legs across both initial and improved routes in one super-batch call
+                prefetch_and_cache_routes_geometry(initial_routes + improved_routes, locations)
                 
                 # Add All Markers
                 for idx, (lat, lng) in enumerate(locations):
@@ -816,7 +905,6 @@ if uploaded_file is not None:
                             tooltip=f"Improved Route {route_idx} ({truck_names[route_idx]})", popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
                         ).add_to(m)
             else:
-
                 # User selected a specific local move
                 move_idx = int(selected_option.split(" ")[1]) - 1
                 selected_new_routes = top_moves[move_idx][3]
@@ -844,6 +932,9 @@ if uploaded_file is not None:
                 for i in range(len(initial_routes)):
                     if initial_routes[i] != selected_new_routes[i]:
                         changed_route_indices.append(i)
+                        
+                # Prefetch affected routes geometry in one batched call
+                prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
                         
                 # Assign collision-free colors for the involved routes
                 local_colors = {}
@@ -897,7 +988,7 @@ if uploaded_file is not None:
                         PolyLineTextPath(pl_new, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
 
-            st_folium(m, width=900, height=600)
+            st_folium(m, width=900, height=600, returned_objects=[])
             
             st.markdown("### Export Updated Routes")
             export_rows = []
