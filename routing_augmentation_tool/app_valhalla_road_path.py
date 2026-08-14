@@ -285,6 +285,30 @@ def decode_polyline(encoded, precision=6):
         decoded.append((lat * inv, lng * inv))
     return decoded
 
+def fetch_single_leg_geometry(p1, p2):
+    """
+    Fetches the true road path between p1 and p2 using Valhalla /route API.
+    Tries 'truck' costing first, falls back to 'auto' costing if restricted.
+    Returns list of (lat, lon) coordinates if successful, or None.
+    """
+    for costing in ["truck", "auto"]:
+        payload = {
+            "locations": [{"lat": p1[0], "lon": p1[1]}, {"lat": p2[0], "lon": p2[1]}],
+            "costing": costing,
+            "units": "kilometers"
+        }
+        try:
+            resp = requests.post("https://valhalla1.openstreetmap.de/route", json=payload, timeout=8)
+            if resp.status_code == 200:
+                legs = resp.json().get("trip", {}).get("legs", [])
+                if legs and "shape" in legs[0]:
+                    coords = decode_polyline(legs[0]["shape"])
+                    if coords:
+                        return coords
+        except Exception:
+            pass
+    return None
+
 def prefetch_and_cache_routes_geometry(routes_list, locations):
     geom_cache = load_geom_cache()
     missing_legs = False
@@ -293,14 +317,16 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
         if not route: continue
         stop_seq = [locations[0]] + [locations[n] for n in route] + [locations[0]]
         
-        # Quick in-memory check
-        all_cached = True
+        # Check which legs need fetching (missing or only straight 2-point fallback)
+        needed_indices = []
         for i in range(len(stop_seq) - 1):
-            k = f"{stop_seq[i][0]},{stop_seq[i][1]}|{stop_seq[i+1][0]},{stop_seq[i+1][1]}"
-            if k not in geom_cache:
-                all_cached = False
-                break
-        if all_cached:
+            p1 = stop_seq[i]
+            p2 = stop_seq[i+1]
+            k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+            if k not in geom_cache or len(geom_cache[k]) <= 2:
+                needed_indices.append(i)
+                
+        if not needed_indices:
             continue
 
         missing_legs = True
@@ -309,6 +335,18 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
             sub_seq = stop_seq[start_idx : start_idx + max_locs]
             if len(sub_seq) < 2: continue
 
+            # Check if any leg in this sub_seq needs geometry
+            needs_sub = False
+            for l_i in range(len(sub_seq) - 1):
+                p1 = sub_seq[l_i]
+                p2 = sub_seq[l_i+1]
+                k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+                if k not in geom_cache or len(geom_cache[k]) <= 2:
+                    needs_sub = True
+                    break
+            if not needs_sub:
+                continue
+
             req_locations = [{"lat": p[0], "lon": p[1]} for p in sub_seq]
             payload = {
                 "locations": req_locations,
@@ -316,41 +354,34 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
                 "units": "kilometers"
             }
             
+            batch_success = False
             try:
-                resp = requests.post("https://valhalla1.openstreetmap.de/route", json=payload, timeout=15)
+                resp = requests.post("https://valhalla1.openstreetmap.de/route", json=payload, timeout=12)
                 if resp.status_code == 200:
                     legs = resp.json().get("trip", {}).get("legs", [])
-                    for l_idx, leg in enumerate(legs):
-                        p1 = sub_seq[l_idx]
-                        p2 = sub_seq[l_idx + 1]
-                        k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
-                        if "shape" in leg:
-                            geom_cache[k] = decode_polyline(leg["shape"])
-                else:
-                    for l_idx in range(len(sub_seq) - 1):
-                        p1 = sub_seq[l_idx]
-                        p2 = sub_seq[l_idx + 1]
-                        k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
-                        if k not in geom_cache:
-                            try:
-                                single_payload = {
-                                    "locations": [{"lat": p1[0], "lon": p1[1]}, {"lat": p2[0], "lon": p2[1]}],
-                                    "costing": "truck",
-                                    "units": "kilometers"
-                                }
-                                s_resp = requests.post("https://valhalla1.openstreetmap.de/route", json=single_payload, timeout=10)
-                                if s_resp.status_code == 200:
-                                    s_legs = s_resp.json().get("trip", {}).get("legs", [])
-                                    if s_legs and "shape" in s_legs[0]:
-                                        geom_cache[k] = decode_polyline(s_legs[0]["shape"])
-                                    else:
-                                        geom_cache[k] = [p1, p2]
-                                else:
-                                    geom_cache[k] = [p1, p2]
-                            except Exception:
-                                geom_cache[k] = [p1, p2]
-            except Exception as e:
-                print(f"Valhalla route prefetch error: {e}")
+                    if len(legs) == len(sub_seq) - 1:
+                        batch_success = True
+                        for l_idx, leg in enumerate(legs):
+                            p1 = sub_seq[l_idx]
+                            p2 = sub_seq[l_idx + 1]
+                            k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+                            if "shape" in leg:
+                                coords = decode_polyline(leg["shape"])
+                                if len(coords) > 2:
+                                    geom_cache[k] = coords
+            except Exception:
+                batch_success = False
+
+            # If batch failed, fallback to individual leg fetches with auto-fallback
+            if not batch_success:
+                for l_idx in range(len(sub_seq) - 1):
+                    p1 = sub_seq[l_idx]
+                    p2 = sub_seq[l_idx + 1]
+                    k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+                    if k not in geom_cache or len(geom_cache[k]) <= 2:
+                        coords = fetch_single_leg_geometry(p1, p2)
+                        if coords:
+                            geom_cache[k] = coords
 
     if missing_legs:
         save_geom_cache()
@@ -360,6 +391,14 @@ def get_road_path(p1, p2):
     k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
     if k in geom_cache:
         return geom_cache[k]
+    
+    # On-demand fetch if missing from cache
+    coords = fetch_single_leg_geometry(p1, p2)
+    if coords:
+        geom_cache[k] = coords
+        save_geom_cache()
+        return coords
+        
     return [p1, p2]
 
 def get_full_route_geometry(locations_list):
@@ -379,7 +418,12 @@ def start_background_geometry_prefetch(top_moves, locations, limit=30):
     Fires off a silent background daemon thread that politely downloads and caches
     all street shapes for the top 30 candidate moves while the user is using the app.
     """
+    if not top_moves or not locations:
+        return
+        
     def worker():
+        if not top_moves:
+            return
         total_to_fetch = min(limit, len(top_moves))
         print(f"--> [Background Prefetch] Starting geometry downloads for top {total_to_fetch} moves...")
         for m_idx, move in enumerate(top_moves[:limit]):
@@ -471,10 +515,10 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                 total_improvements_found += 1
                 added_to_top = False
                 
-                if len(top_moves) < 5 or savings > top_moves[-1][0]:
+                if len(top_moves) < 50 or savings > top_moves[-1][0]:
                     top_moves.append((savings, cost, desc, new_routes))
                     top_moves.sort(key=lambda x: x[0], reverse=True)
-                    top_moves = top_moves[:5]
+                    top_moves = top_moves[:50]
                     added_to_top = True
                     
                 # Throttle UI updates to either when top 5 changes, or every 10 improvements to avoid lag
@@ -760,7 +804,9 @@ if uploaded_file is not None:
         final_cost = 0
         
         if not needs_optimization:
-            init_cost, top_moves, final_cost, improved_routes = st.session_state['optimization_results']
+            init_cost, all_top_moves, final_cost, improved_routes = st.session_state['optimization_results']
+            rejected_set = st.session_state.get('rejected_moves', set())
+            top_moves = [m for m in all_top_moves if m[2] not in rejected_set][:5]
             # Launch background worker for top 30 moves once per run
             if 'background_prefetch_params' not in st.session_state or st.session_state['background_prefetch_params'] != current_params:
                 st.session_state['background_prefetch_params'] = current_params
@@ -839,31 +885,63 @@ if uploaded_file is not None:
             center_lat, center_lng = locations[0]
             m = folium.Map(location=[center_lat, center_lng], zoom_start=13)
             
-            colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred',
-                      'lightred', 'beige', 'darkblue', 'darkgreen', 'cadetblue',
-                      'darkpurple', 'pink', 'lightblue', 'lightgreen',
-                      'gray', 'black', 'lightgray']
+            colors = ['#dc2626', '#2563eb', '#9333ea', '#ea580c', '#16a34a', '#0891b2',
+                      '#db2777', '#4f46e5', '#ca8a04', '#059669', '#6366f1', '#0284c7',
+                      '#b91c1c', '#475569', '#1e293b']
 
-            # Map each node to its original route for marker coloring
-            node_to_route_idx = {}
-            for route_idx, route in enumerate(initial_routes):
-                for n in route:
-                    node_to_route_idx[n] = route_idx
+            # Helper function for edge-level diffing
+            def diff_route_legs(r_orig, r_new):
+                seq_orig = [0] + r_orig + [0] if r_orig else []
+                seq_new = [0] + r_new + [0] if r_new else []
+                legs_orig = [(seq_orig[i], seq_orig[i+1]) for i in range(len(seq_orig) - 1)]
+                legs_new = [(seq_new[i], seq_new[i+1]) for i in range(len(seq_new) - 1)]
+                set_orig = set(legs_orig)
+                set_new = set(legs_new)
+                
+                common = [leg for leg in legs_orig if leg in set_new]
+                removed = [leg for leg in legs_orig if leg not in set_new]
+                added = [leg for leg in legs_new if leg not in set_orig]
+                return common, removed, added
 
             if selected_option == "Show Full OR-Tools Optimization":
                 show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
                 # Prefetch all missing legs across both initial and improved routes in one super-batch call
                 prefetch_and_cache_routes_geometry(initial_routes + improved_routes, locations)
                 
-                # Add All Markers
+                # Map each node to its route and sequence position
+                node_to_route_info = {}
+                for route_idx, route in enumerate(initial_routes):
+                    for seq_idx, n in enumerate(route):
+                        node_to_route_info[n] = (route_idx, seq_idx + 1)
+
+                # Add All Markers with Numbered Badges
                 for idx, (lat, lng) in enumerate(locations):
                     if idx == 0:
-                        folium.Marker([lat, lng], popup="Depot", icon=folium.Icon(color="black", icon="star")).add_to(m)
+                        folium.Marker(
+                            [lat, lng],
+                            tooltip="Depot (Start & End)",
+                            popup="Depot (Start & End)",
+                            icon=folium.DivIcon(
+                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);">★</div>''',
+                                icon_size=(28, 28),
+                                icon_anchor=(14, 14)
+                            )
+                        ).add_to(m)
                     else:
                         demand = demands[idx]
-                        orig_route = node_to_route_idx.get(idx, 0)
+                        orig_route, seq_num = node_to_route_info.get(idx, (0, 1))
                         marker_color = colors[orig_route % len(colors)]
-                        folium.Marker([lat, lng], tooltip=f"{node_names[idx]} (Pallets: {demand})", popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
+                        tooltip_text = f"{node_names[idx]} | Stop #{seq_num} on Route {truck_names[orig_route]} | Pallets: {demand}"
+                        folium.Marker(
+                            [lat, lng],
+                            tooltip=tooltip_text,
+                            popup=tooltip_text,
+                            icon=folium.DivIcon(
+                                html=f'''<div style="background-color: {marker_color}; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">{seq_num}</div>''',
+                                icon_size=(24, 24),
+                                icon_anchor=(12, 12)
+                            )
+                        ).add_to(m)
 
                 # Plot All Original Routes (Always drawn, Solid, Real Road Paths)
                 for route_idx, route in enumerate(initial_routes):
@@ -872,13 +950,16 @@ if uploaded_file is not None:
                     stop_sequence = [locations[0]] + [locations[n] for n in route] + [locations[0]]
                     route_coords = get_full_route_geometry(stop_sequence)
                     color = colors[route_idx % len(colors)]
-                    folium.PolyLine(
+                    pl = folium.PolyLine(
                         route_coords,
                         color=color,
                         weight=5,
-                        opacity=0.8,
-                        tooltip=f"Original Route {route_idx} ({truck_names[route_idx]})", popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
-                    ).add_to(m)
+                        opacity=0.75,
+                        tooltip=f"Original Route {route_idx} ({truck_names[route_idx]})",
+                        popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
+                    )
+                    pl.add_to(m)
+                    PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.8', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
 
                 # Plot All Improved Routes (if toggled, Dotted, Real Road Paths)
                 if show_proposed:
@@ -888,20 +969,23 @@ if uploaded_file is not None:
                         stop_sequence = [locations[0]] + [locations[n] for n in route] + [locations[0]]
                         route_coords = get_full_route_geometry(stop_sequence)
                         color = colors[route_idx % len(colors)]
-                        folium.PolyLine(
+                        pl = folium.PolyLine(
                             route_coords,
                             color=color,
                             weight=4,
                             opacity=0.9,
-                            dash_array='5, 10', # Dotted line
-                            tooltip=f"Improved Route {route_idx} ({truck_names[route_idx]})", popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
-                        ).add_to(m)
+                            dash_array='6, 8',
+                            tooltip=f"Improved Route {route_idx} ({truck_names[route_idx]})",
+                            popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
+                        )
+                        pl.add_to(m)
+                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.9', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
             else:
                 # User selected a specific local move
                 move_idx = int(selected_option.split(" ")[1]) - 1
                 selected_new_routes = top_moves[move_idx][3]
                 
-                # --- NEW BUTTONS ---
+                # --- ACCEPT / REJECT BUTTONS ---
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if st.button("Accept Improvement", type="primary"):
@@ -912,12 +996,7 @@ if uploaded_file is not None:
                 with b_col2:
                     if st.button("Reject Improvement"):
                         st.session_state['rejected_moves'].add(top_moves[move_idx][2])
-                        if 'last_run_params' in st.session_state:
-                            del st.session_state['last_run_params']
                         st.rerun()
-                st.write("---")
-                # -------------------
-
                 
                 # Identify changed routes
                 changed_route_indices = []
@@ -928,48 +1007,152 @@ if uploaded_file is not None:
                 # Prefetch affected routes geometry in one batched call
                 prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
                         
-                # Assign high-visibility collision-free colors for the involved routes (prioritizing red, dark blue, green)
-                highlight_colors = ['red', 'darkblue', 'green', 'darkred', 'darkgreen', 'blue', 'purple']
+                # Assign distinct bold base colors for each involved route
+                highlight_colors = ['#dc2626', '#2563eb', '#9333ea', '#ea580c', '#16a34a', '#0891b2']
                 local_colors = {idx: highlight_colors[i % len(highlight_colors)] for i, idx in enumerate(changed_route_indices)}
+
+                # Display Visual Breadcrumb & Diff Summary Cards
+                st.markdown("#### 🔄 Route Improvement Sequence Comparison")
+                for idx in changed_route_indices:
+                    t_name = truck_names[idx]
+                    r_orig = initial_routes[idx]
+                    r_new = selected_new_routes[idx]
+                    r_color = local_colors[idx]
+                    
+                    orig_names = ["🏠 Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_orig)] + ["🏠 Depot"]
+                    new_names = ["🏠 Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_new)] + ["🏠 Depot"]
+                    
+                    orig_str = " ➔ ".join(orig_names)
+                    new_str = " ➔ ".join(new_names)
+                    
+                    orig_pallets = sum(demands[n] for n in r_orig)
+                    new_pallets = sum(demands[n] for n in r_new)
+                    
+                    st.markdown(f'''
+                    <div style="border-left: 5px solid {r_color}; padding: 8px 12px; margin-bottom: 10px; background-color: #f8fafc; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size: 15px; font-weight: bold; color: {r_color}; margin-bottom: 4px;">
+                            🚚 Truck {t_name}
+                            <span style="font-size: 12px; font-weight: normal; color: #64748b; margin-left: 8px;">
+                                Load: {orig_pallets}p ➔ <strong>{new_pallets}p</strong> | Stops: {len(r_orig)} ➔ <strong>{len(r_new)}</strong>
+                            </span>
+                        </div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.5;">
+                            <span style="color: #64748b;"><strong>Original:</strong></span> {orig_str}<br/>
+                            <span style="color: #059669;"><strong>Improved:</strong></span> {new_str}
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                st.write("---")
+
+                # Map nodes to their before & after routes and sequences
+                orig_node_info = {}
+                for r_idx in changed_route_indices:
+                    for s_idx, n in enumerate(initial_routes[r_idx]):
+                        orig_node_info[n] = (r_idx, s_idx + 1)
                         
-                # Add Markers ONLY for nodes in these routes, plus depot
+                new_node_info = {}
+                for r_idx in changed_route_indices:
+                    for s_idx, n in enumerate(selected_new_routes[r_idx]):
+                        new_node_info[n] = (r_idx, s_idx + 1)
+
+                # Nodes to draw: all nodes in affected routes + depot
                 nodes_to_draw = {0}
                 for idx in changed_route_indices:
                     nodes_to_draw.update(initial_routes[idx])
                     nodes_to_draw.update(selected_new_routes[idx])
-                    
-                for idx, (lat, lng) in enumerate(locations):
-                    if idx in nodes_to_draw:
-                        if idx == 0:
-                            folium.Marker([lat, lng], popup="Depot", icon=folium.Icon(color="black", icon="star")).add_to(m)
-                        else:
-                            demand = demands[idx]
-                            orig_route = node_to_route_idx.get(idx, 0)
-                            marker_color = local_colors.get(orig_route, highlight_colors[0])
-                            folium.Marker([lat, lng], tooltip=f"{node_names[idx]} (Pallets: {demand})", popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
 
-                # Draw ONLY the affected routes
+                # Draw Markers
+                for idx in nodes_to_draw:
+                    lat, lng = locations[idx]
+                    if idx == 0:
+                        folium.Marker(
+                            [lat, lng],
+                            tooltip="Depot (Start & End)",
+                            popup="Depot (Start & End)",
+                            icon=folium.DivIcon(
+                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);">★</div>''',
+                                icon_size=(28, 28),
+                                icon_anchor=(14, 14)
+                            )
+                        ).add_to(m)
+                    else:
+                        demand = demands[idx]
+                        orig_rt, orig_seq = orig_node_info.get(idx, (None, None))
+                        new_rt, new_seq = new_node_info.get(idx, (None, None))
+                        
+                        target_rt = new_rt if new_rt is not None else orig_rt
+                        bg_color = local_colors.get(target_rt, '#2563eb')
+                        
+                        if orig_rt is not None and new_rt is not None and orig_rt != new_rt:
+                            # Transferred between trucks
+                            badge_text = f"#{orig_seq}➔#{new_seq}"
+                            tooltip_text = f"🔄 {node_names[idx]} | Transferred: Truck {truck_names[orig_rt]} (Stop #{orig_seq}) ➔ Truck {truck_names[new_rt]} (Stop #{new_seq}) | Pallets: {demand}"
+                            html = f'''<div style="background-color: {bg_color}; color: white; border: 2px solid #f59e0b; border-radius: 12px; padding: 0 5px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); white-space: nowrap;">{badge_text}</div>'''
+                            icon = folium.DivIcon(html=html, icon_size=(54, 24), icon_anchor=(27, 12))
+                        elif orig_seq is not None and new_seq is not None and orig_seq != new_seq:
+                            # Re-sequenced / Inverted / Reversed on same truck
+                            badge_text = f"#{orig_seq}➔#{new_seq}"
+                            tooltip_text = f"🔄 {node_names[idx]} | Position Changed: Stop #{orig_seq} ➔ Stop #{new_seq} on Truck {truck_names[target_rt]} | Pallets: {demand}"
+                            html = f'''<div style="background-color: {bg_color}; color: white; border: 2px solid #f59e0b; border-radius: 12px; padding: 0 5px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); white-space: nowrap;">{badge_text}</div>'''
+                            icon = folium.DivIcon(html=html, icon_size=(54, 24), icon_anchor=(27, 12))
+                        else:
+                            # Unchanged sequence position
+                            seq_display = new_seq if new_seq is not None else orig_seq
+                            badge_text = f"{seq_display}"
+                            tooltip_text = f"{node_names[idx]} | Stop #{seq_display} on Truck {truck_names[target_rt]} | Pallets: {demand}"
+                            html = f'''<div style="background-color: {bg_color}; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">{badge_text}</div>'''
+                            icon = folium.DivIcon(html=html, icon_size=(24, 24), icon_anchor=(12, 12))
+                            
+                        folium.Marker([lat, lng], tooltip=tooltip_text, popup=tooltip_text, icon=icon).add_to(m)
+
+                # Draw Route Legs by Type (Unchanged Common, Cut Removed, Added Improved)
                 for idx in changed_route_indices:
                     r_color = local_colors[idx]
-                    
-                    # Solid original (Real Road Paths)
+                    t_name = truck_names[idx]
                     r_orig = initial_routes[idx]
-                    if r_orig:
-                        stops_orig = [locations[0]] + [locations[n] for n in r_orig] + [locations[0]]
-                        route_coords_orig = get_full_route_geometry(stops_orig)
-                        pl_orig = folium.PolyLine(route_coords_orig, color=r_color, weight=6, opacity=0.3, tooltip=f"Original Route {truck_names[idx]}", popup=f"Original Route {truck_names[idx]}")
-                        pl_orig.add_to(m)
-                        PolyLineTextPath(pl_orig, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '0.3', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
-                    
-                    # Dotted new (Real Road Paths)
                     r_new = selected_new_routes[idx]
-                    if r_new:
-                        stops_new = [locations[0]] + [locations[n] for n in r_new] + [locations[0]]
-                        route_coords_new = get_full_route_geometry(stops_new)
-                        pl_new = folium.PolyLine(route_coords_new, color=r_color, weight=5, opacity=1.0, dash_array='5, 10', tooltip=f"Improved Route {truck_names[idx]}", popup=f"Improved Route {truck_names[idx]}")
-                        pl_new.add_to(m)
-                        PolyLineTextPath(pl_new, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
+                    
+                    legs_common, legs_removed, legs_added = diff_route_legs(r_orig, r_new)
+                    
+                    # 1. Unchanged Legs: Faint gray-tinted line
+                    for u, v in legs_common:
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        pl = folium.PolyLine(
+                            leg_coords,
+                            color='#94a3b8',
+                            weight=3,
+                            opacity=0.4,
+                            tooltip=f"Unchanged: {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                        )
+                        pl.add_to(m)
+                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=5, attributes={'fill': '#94a3b8', 'fill-opacity': '0.4', 'font-weight': 'bold', 'font-size': '12'}).add_to(m)
+                    
+                    # 2. Removed Legs: Solid line in route's color (opacity 0.45)
+                    for u, v in legs_removed:
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        pl = folium.PolyLine(
+                            leg_coords,
+                            color=r_color,
+                            weight=5,
+                            opacity=0.45,
+                            tooltip=f"Original (Cut): {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                        )
+                        pl.add_to(m)
+                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': r_color, 'fill-opacity': '0.45', 'font-weight': 'bold', 'font-size': '15'}).add_to(m)
 
+                    # 3. Added Improved Legs: Thick Dotted line with bold directional arrows in route's color
+                    for u, v in legs_added:
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        pl = folium.PolyLine(
+                            leg_coords,
+                            color=r_color,
+                            weight=6,
+                            opacity=1.0,
+                            dash_array='6, 8',
+                            tooltip=f"Improved (New): {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                        )
+                        pl.add_to(m)
+                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
             st_folium(m, width=900, height=600, returned_objects=[])
             
