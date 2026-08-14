@@ -573,6 +573,7 @@ if uploaded_file is not None:
         st.session_state['rejected_moves'] = set()
         
     df = pd.read_csv(io.BytesIO(file_bytes))
+    df.columns = df.columns.astype(str).str.strip()
 
     
     # Safely handle 'Seq' vs 'seq' column casing
@@ -595,13 +596,13 @@ if uploaded_file is not None:
             'Food Pallets': 'sum',
             'Pet Food Pallets': 'sum',
             'Chemical Pallets': 'sum',
-            'Rt': 'first',
             'seq': 'min'
         }
         if 'Weight' in df.columns:
             agg_funcs['Weight'] = 'sum'
             
-        grouped = df.groupby(['Latitude', 'Longitude', 'Name'], as_index=False).agg(agg_funcs)
+        # Group by Latitude, Longitude, Name, AND Rt to ensure separate truck deliveries to the same customer are NOT merged!
+        grouped = df.groupby(['Latitude', 'Longitude', 'Name', 'Rt'], as_index=False).agg(agg_funcs)
         
         # Calculate Pallets using math.ceil
         def calc_pallets(row):
@@ -624,6 +625,7 @@ if uploaded_file is not None:
             if uploaded_trucks is not None:
                 try:
                     tdf = pd.read_csv(uploaded_trucks)
+                    tdf.columns = tdf.columns.astype(str).str.strip()
                     if 'Vehicle' in tdf.columns and 'Pallet Capacity' in tdf.columns:
                         # Sort by capacity DESCENDING to assign the absolute largest trucks to the largest loads, maximizing slack
                         tdf = tdf.sort_values(by='Pallet Capacity', ascending=False)
@@ -701,19 +703,15 @@ if uploaded_file is not None:
         vehicle_capacities = [int(c) for c in edited_trucks["Capacity in Pallets"].tolist()]
         rt_to_vehicle = dict(zip(edited_trucks["Rt"], edited_trucks["Vehicle Name"]))
         
-        # Build locations and demands lists
+        # Build locations and demands lists directly from grouped rows (1 node per grouped delivery)
         locations = [depot_coords]
         demands = [0]
         node_names = ["Depot"]
-        coord_to_node = {depot_coords: 0}
         
         for _, row in grouped.iterrows():
-            coord = (row['Latitude'], row['Longitude'])
-            if coord not in coord_to_node:
-                coord_to_node[coord] = len(locations)
-                locations.append(coord)
-                demands.append(int(row['Total Pallets']))
-                node_names.append(row['Name'])
+            locations.append((row['Latitude'], row['Longitude']))
+            demands.append(int(row['Total Pallets']))
+            node_names.append(row['Name'])
                 
         total_demand = sum(demands)
         total_capacity = sum(vehicle_capacities)
@@ -732,20 +730,14 @@ if uploaded_file is not None:
             initial_routes = [[] for _ in truck_names]
             truck_name_to_idx = {name: idx for idx, name in enumerate(truck_names)}
             
-            for _, row in grouped.iterrows():
-                coord = (row['Latitude'], row['Longitude'])
-                node_id = coord_to_node[coord]
-                if node_id == 0:
-                    continue
-                    
+            for row_idx, row in grouped.iterrows():
+                node_id = row_idx + 1 # 1-indexed (0 is Depot)
                 rt_name = row['Rt']
                 if rt_name in rt_to_vehicle:
                     t_name = rt_to_vehicle[rt_name]
                     if t_name in truck_name_to_idx:
                         t_idx = truck_name_to_idx[t_name]
-                        # avoid consecutive duplicates
-                        if not initial_routes[t_idx] or initial_routes[t_idx][-1] != node_id:
-                            initial_routes[t_idx].append(node_id)
+                        initial_routes[t_idx].append(node_id)
             st.session_state['accepted_routes'] = initial_routes
         else:
             initial_routes = st.session_state['accepted_routes']
@@ -936,18 +928,9 @@ if uploaded_file is not None:
                 # Prefetch affected routes geometry in one batched call
                 prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
                         
-                # Assign collision-free colors for the involved routes
-                local_colors = {}
-                used_colors = set()
-                for idx in changed_route_indices:
-                    desired_color = colors[idx % len(colors)]
-                    if desired_color in used_colors:
-                        for fallback in colors:
-                            if fallback not in used_colors:
-                                desired_color = fallback
-                                break
-                    used_colors.add(desired_color)
-                    local_colors[idx] = desired_color
+                # Assign high-visibility collision-free colors for the involved routes (prioritizing red, dark blue, green)
+                highlight_colors = ['red', 'darkblue', 'green', 'darkred', 'darkgreen', 'blue', 'purple']
+                local_colors = {idx: highlight_colors[i % len(highlight_colors)] for i, idx in enumerate(changed_route_indices)}
                         
                 # Add Markers ONLY for nodes in these routes, plus depot
                 nodes_to_draw = {0}
@@ -962,7 +945,7 @@ if uploaded_file is not None:
                         else:
                             demand = demands[idx]
                             orig_route = node_to_route_idx.get(idx, 0)
-                            marker_color = local_colors.get(orig_route, colors[orig_route % len(colors)])
+                            marker_color = local_colors.get(orig_route, highlight_colors[0])
                             folium.Marker([lat, lng], tooltip=f"{node_names[idx]} (Pallets: {demand})", popup=f"{node_names[idx]} (Pallets: {demand})", icon=folium.Icon(color=marker_color, icon="info-sign")).add_to(m)
 
                 # Draw ONLY the affected routes

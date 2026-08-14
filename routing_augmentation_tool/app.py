@@ -272,6 +272,7 @@ if uploaded_file is not None:
         st.session_state['rejected_moves'] = set()
         
     df = pd.read_csv(io.BytesIO(file_bytes))
+    df.columns = df.columns.astype(str).str.strip()
 
     
     # Safely handle 'Seq' vs 'seq' column casing
