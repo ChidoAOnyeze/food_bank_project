@@ -13,13 +13,15 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import itertools
 
-def generate_relocate_moves(routes, truck_names, node_names):
+def generate_relocate_moves(routes, truck_names, node_names, touched_routes=None):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
         for i in range(len(routes[r1])):
             node = routes[r1][i]
             for r2 in range(num_routes):
+                if touched_routes is not None and r1 not in touched_routes and r2 not in touched_routes:
+                    continue
                 insert_positions = len(routes[r2]) if r1 == r2 else len(routes[r2]) + 1
                 for j in range(insert_positions):
                     if r1 == r2 and j == i:
@@ -30,15 +32,19 @@ def generate_relocate_moves(routes, truck_names, node_names):
                     
                     target_truck = truck_names[r2] if r1 != r2 else f"{truck_names[r2]} (different position)"
                     desc = f"Move '{node_names[node]}' from {truck_names[r1]} to {target_truck}"
-                    moves.append((new_routes, desc))
+                    affected = (r1,) if r1 == r2 else tuple(sorted((r1, r2)))
+                    sub = {r1: new_routes[r1], r2: new_routes[r2]}
+                    moves.append((new_routes, desc, affected, sub))
     return moves
 
-def generate_swap_moves(routes, truck_names, node_names):
+def generate_swap_moves(routes, truck_names, node_names, touched_routes=None):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
         for i in range(len(routes[r1])):
             for r2 in range(r1, num_routes):
+                if touched_routes is not None and r1 not in touched_routes and r2 not in touched_routes:
+                    continue
                 start_j = i + 1 if r1 == r2 else 0
                 for j in range(start_j, len(routes[r2])):
                     node1 = routes[r1][i]
@@ -47,34 +53,40 @@ def generate_swap_moves(routes, truck_names, node_names):
                     new_routes[r1][i] = node2
                     new_routes[r2][j] = node1
                     desc = f"Swap the deliveries for '{node_names[node1]}' (on {truck_names[r1]}) and '{node_names[node2]}' (on {truck_names[r2]})"
-                    moves.append((new_routes, desc))
+                    affected = (r1,) if r1 == r2 else tuple(sorted((r1, r2)))
+                    sub = {r1: new_routes[r1], r2: new_routes[r2]}
+                    moves.append((new_routes, desc, affected, sub))
     return moves
 
-def generate_2opt_moves(routes, truck_names, node_names):
+def generate_2opt_moves(routes, truck_names, node_names, touched_routes=None):
     moves = []
     num_routes = len(routes)
     for r in range(num_routes):
+        if touched_routes is not None and r not in touched_routes:
+            continue
         route = routes[r]
         n = len(route)
         for i in range(n - 1):
             for j in range(i + 1, n):
                 if j - i == 1:
-                    continue # Already covered by adjacent swap
+                    continue
                 new_routes = [list(rt) for rt in routes]
                 new_routes[r] = route[:i] + route[i:j+1][::-1] + route[j+1:]
                 desc = f"Reorder the stops on {truck_names[r]} (reverse the sequence between '{node_names[route[i]]}' and '{node_names[route[j]]}') to uncross the route"
-                moves.append((new_routes, desc))
+                affected = (r,)
+                sub = {r: new_routes[r]}
+                moves.append((new_routes, desc, affected, sub))
     return moves
 
-def generate_cross_exchange_moves(routes, truck_names, node_names):
+def generate_cross_exchange_moves(routes, truck_names, node_names, touched_routes=None):
     moves = []
     num_routes = len(routes)
     for r1 in range(num_routes):
         for r2 in range(r1 + 1, num_routes):
-            # Try swapping tails
+            if touched_routes is not None and r1 not in touched_routes and r2 not in touched_routes:
+                continue
             for i in range(len(routes[r1]) + 1):
                 for j in range(len(routes[r2]) + 1):
-                    # Skip if both tails are empty or both are full (just swaps whole routes)
                     if (i == 0 and j == 0) or (i == len(routes[r1]) and j == len(routes[r2])):
                         continue
                         
@@ -89,7 +101,9 @@ def generate_cross_exchange_moves(routes, truck_names, node_names):
                     n2 = f"'{node_names[routes[r2][j-1]]}'" if j > 0 else "the start"
                     
                     desc = f"Exchange the end-portions of {truck_names[r1]} (after {n1}) and {truck_names[r2]} (after {n2}) to untangle them"
-                    moves.append((new_routes, desc))
+                    affected = tuple(sorted((r1, r2)))
+                    sub = {r1: new_routes[r1], r2: new_routes[r2]}
+                    moves.append((new_routes, desc, affected, sub))
     return moves
 
 
@@ -233,7 +247,7 @@ def get_valhalla_distance_matrix(locations):
                 
     return distance_matrix
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
@@ -283,20 +297,35 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
     # Read Initial Assignment
     initial_solution = routing.ReadAssignmentFromRoutes(initial_routes, True)
     if not initial_solution:
-        return None, None, None, None
+        return None, None, None, None, None
 
     initial_cost = initial_solution.ObjectiveValue()
 
-    # Analyze local changes
-    moves = (generate_relocate_moves(initial_routes, truck_names, node_names) + 
-             generate_swap_moves(initial_routes, truck_names, node_names) + 
-             generate_2opt_moves(initial_routes, truck_names, node_names) + 
-             generate_cross_exchange_moves(initial_routes, truck_names, node_names))
-    top_moves = []
-    total_improvements_found = 0
-    seen_states = set()
+    # Incremental / Delta Neighborhood Evaluation:
+    # 1. Retain candidates from previous evaluation that do NOT touch any modified route
+    retained_moves = []
+    if touched_routes is not None and previous_candidates:
+        touched_set = set(touched_routes)
+        for cand in previous_candidates:
+            savings, cost, desc, _, affected_trucks, sub_routes = cand
+            if touched_set.isdisjoint(set(affected_trucks)):
+                # Reconstruct onto new initial_routes baseline
+                reconstructed_routes = [list(r) for r in initial_routes]
+                for t_idx, t_route in sub_routes.items():
+                    reconstructed_routes[t_idx] = t_route
+                retained_moves.append((savings, cost, desc, reconstructed_routes, affected_trucks, sub_routes))
+
+    # 2. Generate local moves ONLY for the touched routes (or all routes on first run)
+    moves = (generate_relocate_moves(initial_routes, truck_names, node_names, touched_routes) + 
+             generate_swap_moves(initial_routes, truck_names, node_names, touched_routes) + 
+             generate_2opt_moves(initial_routes, truck_names, node_names, touched_routes) + 
+             generate_cross_exchange_moves(initial_routes, truck_names, node_names, touched_routes))
+
+    all_candidates = list(retained_moves)
+    seen_states = set(tuple(tuple(r) for r in m[3]) for m in retained_moves)
+    total_improvements_found = len(retained_moves)
     
-    for new_routes, desc in moves:
+    for new_routes, desc, affected_trucks, sub_routes in moves:
         state_hash = tuple(tuple(r) for r in new_routes)
         if state_hash in seen_states:
             continue
@@ -308,34 +337,33 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
             savings = initial_cost - cost
             if savings > 0:
                 total_improvements_found += 1
-                added_to_top = False
+                all_candidates.append((savings, cost, desc, new_routes, affected_trucks, sub_routes))
                 
-                if len(top_moves) < 50 or savings > top_moves[-1][0]:
-                    top_moves.append((savings, cost, desc, new_routes))
-                    top_moves.sort(key=lambda x: x[0], reverse=True)
-                    top_moves = top_moves[:50]
-                    added_to_top = True
-                    
-                # Throttle UI updates to either when top 5 changes, or every 10 improvements to avoid lag
-                if ui_container and (added_to_top or total_improvements_found % 10 == 0):
+                # Throttle UI updates
+                if ui_container and total_improvements_found % 15 == 0:
                     ui_container.empty()
                     with ui_container.container():
                         import streamlit as st
-                        st.write(f"*(Testing local neighborhood... found **{total_improvements_found}** total improvements so far)*")
-                        for rank, (imp, c, d, _) in enumerate(top_moves):
+                        st.write(f"*(Testing local neighborhood (incremental)... found **{total_improvements_found}** total improvements so far)*")
+                        top_preview = sorted(all_candidates, key=lambda x: x[0], reverse=True)[:5]
+                        for rank, (imp, c, d, _, _, _) in enumerate(top_preview):
                             pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
                             st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
                             
                 if test_mode and total_improvements_found >= 200:
                     break
                             
-    # Final flush to UI to ensure the exact final count is displayed
+    # Final flush to UI
+    all_candidates.sort(key=lambda x: x[0], reverse=True)
+    all_candidates = all_candidates[:50]
+    top_moves = [(m[0], m[1], m[2], m[3]) for m in all_candidates]
+
     if ui_container:
         ui_container.empty()
         with ui_container.container():
             import streamlit as st
             st.write(f"*(Finished evaluating. Found **{total_improvements_found}** total improvements)*")
-            for rank, (imp, c, d, _) in enumerate(top_moves):
+            for rank, (imp, c, d, _) in enumerate(top_moves[:5]):
                 pct = (imp / initial_cost) * 100 if initial_cost > 0 else 0
                 st.write(f"**{rank+1}.** {d} (Improves by {pct:.1f}%)")
 
@@ -358,7 +386,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                 index = solution.Value(routing.NextVar(index))
             improved_routes.append(route)
 
-    return initial_cost, top_moves, solution.ObjectiveValue() if solution else None, improved_routes
+    return initial_cost, top_moves, solution.ObjectiveValue() if solution else None, improved_routes, all_candidates
 
 st.set_page_config(layout="wide")
 st.title("Route Optimization & GUI")
@@ -776,11 +804,18 @@ if uploaded_file is not None:
                 move_idx = int(selected_option.split(" ")[1]) - 1
                 selected_new_routes = top_moves[move_idx][3]
                 
+                # Identify changed routes FIRST before buttons and rendering
+                changed_route_indices = []
+                for i in range(len(initial_routes)):
+                    if initial_routes[i] != selected_new_routes[i]:
+                        changed_route_indices.append(i)
+                
                 # --- ACCEPT / REJECT BUTTONS ---
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if st.button("Accept Improvement", type="primary"):
                         st.session_state['accepted_routes'] = selected_new_routes
+                        st.session_state['touched_routes'] = set(changed_route_indices)
                         if 'last_run_params' in st.session_state:
                             del st.session_state['last_run_params']
                         st.rerun()
@@ -788,12 +823,6 @@ if uploaded_file is not None:
                     if st.button("Reject Improvement"):
                         st.session_state['rejected_moves'].add(top_moves[move_idx][2])
                         st.rerun()
-                
-                # Identify changed routes
-                changed_route_indices = []
-                for i in range(len(initial_routes)):
-                    if initial_routes[i] != selected_new_routes[i]:
-                        changed_route_indices.append(i)
                         
                 # Prefetch affected routes geometry in one batched call
                 prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
@@ -981,10 +1010,18 @@ if uploaded_file is not None:
                 feed_container = st.empty()
                 
                 with st.spinner("Optimizing routes (map is usable while this runs)..."):
-                    results = solve_routing(
-                        locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container, test_mode=test_mode, allow_overcapacity=allow_overcapacity, rejected_moves=st.session_state.get('rejected_moves', set())
+                    touched_routes = st.session_state.get('touched_routes', None)
+                    prev_candidates = st.session_state.get('all_candidates_pool', None)
+                    res_tuple = solve_routing(
+                        locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_weight, latency_weight, ui_container=feed_container, test_mode=test_mode, allow_overcapacity=allow_overcapacity, rejected_moves=st.session_state.get('rejected_moves', set()), touched_routes=touched_routes, previous_candidates=prev_candidates
                     )
-                st.session_state['optimization_results'] = results
+                    if res_tuple[0] is not None:
+                        init_c, t_moves, f_cost, imp_routes, all_cands = res_tuple
+                        st.session_state['optimization_results'] = (init_c, t_moves, f_cost, imp_routes)
+                        st.session_state['all_candidates_pool'] = all_cands
+                    else:
+                        st.session_state['optimization_results'] = (None, None, None, None)
+                    st.session_state['touched_routes'] = None
                 st.session_state['last_run_params'] = current_params
                 st.rerun()
 
