@@ -1,0 +1,9 @@
+Grouping,Category,Metric,Metric_Key,Count (Customers),Total Sum,Mean (Average),Median (50%),Std Dev,Min,Q1 (25%),Q3 (75%),IQR,Max
+Overall,All Customers,Unrounded Pallets,total_pallets_unrounded,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+Overall,All Customers,Rounded Pallets,total_pallets_rounded,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+Overall,All Customers,Pallets per Order,pallets_per_order,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+Overall,All Customers,Total Orders,total_orders,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+city_borough,,Unrounded Pallets,total_pallets_unrounded,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+city_borough,,Rounded Pallets,total_pallets_rounded,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+city_borough,,Pallets per Order,pallets_per_order,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0
+city_borough,,Total Orders,total_orders,358,358.0,1.0,1.0,0.0,1.0,1.0,1.0,0.0,1.0

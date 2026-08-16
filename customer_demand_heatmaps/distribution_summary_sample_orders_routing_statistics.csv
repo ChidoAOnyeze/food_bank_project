@@ -1,0 +1,69 @@
+Grouping,Category,Metric,Metric_Key,Count (Customers),Total Sum,Mean (Average),Median (50%),Std Dev,Min,Q1 (25%),Q3 (75%),IQR,Max
+Overall,All Customers,Unrounded Pallets,total_pallets_unrounded,88,217.7,2.47,1.81,2.61,0.06,0.86,3.15,2.3,18.47
+Overall,All Customers,Rounded Pallets,total_pallets_rounded,88,296.0,3.36,3.0,2.68,1.0,2.0,4.0,2.0,20.0
+Overall,All Customers,Pallets per Order,pallets_per_order,88,131.57,1.5,1.13,1.79,0.06,0.44,1.73,1.29,9.68
+Overall,All Customers,Total Orders,total_orders,88,153.0,1.74,2.0,0.44,1.0,1.0,2.0,1.0,2.0
+city_borough,Arverne,Unrounded Pallets,total_pallets_unrounded,1,0.82,0.82,0.82,0.0,0.82,0.82,0.82,0.0,0.82
+city_borough,Arverne,Rounded Pallets,total_pallets_rounded,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Arverne,Pallets per Order,pallets_per_order,1,0.41,0.41,0.41,0.0,0.41,0.41,0.41,0.0,0.41
+city_borough,Arverne,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Bronx,Unrounded Pallets,total_pallets_unrounded,23,62.12,2.7,2.46,2.29,0.06,1.05,3.32,2.26,8.53
+city_borough,Bronx,Rounded Pallets,total_pallets_rounded,23,82.0,3.57,3.0,2.31,1.0,2.0,4.0,2.0,9.0
+city_borough,Bronx,Pallets per Order,pallets_per_order,23,39.95,1.74,1.27,1.84,0.06,0.55,2.13,1.58,8.53
+city_borough,Bronx,Total Orders,total_orders,23,38.0,1.65,2.0,0.49,1.0,1.0,2.0,1.0,2.0
+city_borough,Brooklyn,Unrounded Pallets,total_pallets_unrounded,31,73.14,2.36,1.71,2.07,0.16,0.88,3.44,2.57,9.68
+city_borough,Brooklyn,Rounded Pallets,total_pallets_rounded,31,100.0,3.23,3.0,2.06,1.0,2.0,4.0,2.0,10.0
+city_borough,Brooklyn,Pallets per Order,pallets_per_order,31,46.06,1.49,1.02,1.92,0.16,0.53,1.72,1.2,9.68
+city_borough,Brooklyn,Total Orders,total_orders,31,54.0,1.74,2.0,0.44,1.0,1.5,2.0,0.5,2.0
+city_borough,Corona,Unrounded Pallets,total_pallets_unrounded,1,2.08,2.08,2.08,0.0,2.08,2.08,2.08,0.0,2.08
+city_borough,Corona,Rounded Pallets,total_pallets_rounded,1,3.0,3.0,3.0,0.0,3.0,3.0,3.0,0.0,3.0
+city_borough,Corona,Pallets per Order,pallets_per_order,1,1.04,1.04,1.04,0.0,1.04,1.04,1.04,0.0,1.04
+city_borough,Corona,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Far Rockaway,Unrounded Pallets,total_pallets_unrounded,2,5.15,2.58,2.58,0.33,2.34,2.46,2.69,0.23,2.81
+city_borough,Far Rockaway,Rounded Pallets,total_pallets_rounded,2,7.0,3.5,3.5,0.71,3.0,3.25,3.75,0.5,4.0
+city_borough,Far Rockaway,Pallets per Order,pallets_per_order,2,2.57,1.28,1.28,0.16,1.17,1.23,1.34,0.11,1.4
+city_borough,Far Rockaway,Total Orders,total_orders,2,4.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Flushing,Unrounded Pallets,total_pallets_unrounded,2,20.21,10.1,10.1,11.83,1.74,5.92,14.29,8.36,18.47
+city_borough,Flushing,Rounded Pallets,total_pallets_rounded,2,22.0,11.0,11.0,12.73,2.0,6.5,15.5,9.0,20.0
+city_borough,Flushing,Pallets per Order,pallets_per_order,2,10.98,5.49,5.49,5.3,1.74,3.62,7.36,3.75,9.24
+city_borough,Flushing,Total Orders,total_orders,2,3.0,1.5,1.5,0.71,1.0,1.25,1.75,0.5,2.0
+city_borough,Forest Hills,Unrounded Pallets,total_pallets_unrounded,2,4.73,2.37,2.37,2.24,0.78,1.57,3.16,1.59,3.95
+city_borough,Forest Hills,Rounded Pallets,total_pallets_rounded,2,7.0,3.5,3.5,2.12,2.0,2.75,4.25,1.5,5.0
+city_borough,Forest Hills,Pallets per Order,pallets_per_order,2,2.37,1.18,1.18,1.12,0.39,0.79,1.58,0.8,1.98
+city_borough,Forest Hills,Total Orders,total_orders,2,4.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Glendale,Unrounded Pallets,total_pallets_unrounded,1,2.47,2.47,2.47,0.0,2.47,2.47,2.47,0.0,2.47
+city_borough,Glendale,Rounded Pallets,total_pallets_rounded,1,3.0,3.0,3.0,0.0,3.0,3.0,3.0,0.0,3.0
+city_borough,Glendale,Pallets per Order,pallets_per_order,1,1.24,1.24,1.24,0.0,1.24,1.24,1.24,0.0,1.24
+city_borough,Glendale,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Jamaica,Unrounded Pallets,total_pallets_unrounded,3,7.86,2.62,2.58,0.76,1.88,2.23,2.99,0.76,3.4
+city_borough,Jamaica,Rounded Pallets,total_pallets_rounded,3,9.0,3.0,3.0,1.0,2.0,2.5,3.5,1.0,4.0
+city_borough,Jamaica,Pallets per Order,pallets_per_order,3,6.57,2.19,1.88,1.09,1.29,1.58,2.64,1.05,3.4
+city_borough,Jamaica,Total Orders,total_orders,3,4.0,1.33,1.0,0.58,1.0,1.0,1.5,0.5,2.0
+city_borough,Kew Gardens,Unrounded Pallets,total_pallets_unrounded,2,1.68,0.84,0.84,0.89,0.21,0.52,1.16,0.63,1.47
+city_borough,Kew Gardens,Rounded Pallets,total_pallets_rounded,2,3.0,1.5,1.5,0.71,1.0,1.25,1.75,0.5,2.0
+city_borough,Kew Gardens,Pallets per Order,pallets_per_order,2,0.95,0.48,0.48,0.37,0.21,0.34,0.61,0.26,0.74
+city_borough,Kew Gardens,Total Orders,total_orders,2,3.0,1.5,1.5,0.71,1.0,1.25,1.75,0.5,2.0
+city_borough,New York,Unrounded Pallets,total_pallets_unrounded,15,21.29,1.42,0.87,1.72,0.23,0.57,1.1,0.53,6.9
+city_borough,New York,Rounded Pallets,total_pallets_rounded,15,36.0,2.4,2.0,1.72,1.0,2.0,2.0,0.0,8.0
+city_borough,New York,Pallets per Order,pallets_per_order,15,11.35,0.76,0.44,0.84,0.23,0.29,0.71,0.42,3.45
+city_borough,New York,Total Orders,total_orders,15,27.0,1.8,2.0,0.41,1.0,2.0,2.0,0.0,2.0
+city_borough,Ozone Park,Unrounded Pallets,total_pallets_unrounded,1,6.2,6.2,6.2,0.0,6.2,6.2,6.2,0.0,6.2
+city_borough,Ozone Park,Rounded Pallets,total_pallets_rounded,1,8.0,8.0,8.0,0.0,8.0,8.0,8.0,0.0,8.0
+city_borough,Ozone Park,Pallets per Order,pallets_per_order,1,3.1,3.1,3.1,0.0,3.1,3.1,3.1,0.0,3.1
+city_borough,Ozone Park,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Queens Village,Unrounded Pallets,total_pallets_unrounded,1,3.86,3.86,3.86,0.0,3.86,3.86,3.86,0.0,3.86
+city_borough,Queens Village,Rounded Pallets,total_pallets_rounded,1,5.0,5.0,5.0,0.0,5.0,5.0,5.0,0.0,5.0
+city_borough,Queens Village,Pallets per Order,pallets_per_order,1,1.93,1.93,1.93,0.0,1.93,1.93,1.93,0.0,1.93
+city_borough,Queens Village,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Rosedale,Unrounded Pallets,total_pallets_unrounded,1,1.52,1.52,1.52,0.0,1.52,1.52,1.52,0.0,1.52
+city_borough,Rosedale,Rounded Pallets,total_pallets_rounded,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Rosedale,Pallets per Order,pallets_per_order,1,0.76,0.76,0.76,0.0,0.76,0.76,0.76,0.0,0.76
+city_borough,Rosedale,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Springfield Gardens,Unrounded Pallets,total_pallets_unrounded,1,2.95,2.95,2.95,0.0,2.95,2.95,2.95,0.0,2.95
+city_borough,Springfield Gardens,Rounded Pallets,total_pallets_rounded,1,4.0,4.0,4.0,0.0,4.0,4.0,4.0,0.0,4.0
+city_borough,Springfield Gardens,Pallets per Order,pallets_per_order,1,1.48,1.48,1.48,0.0,1.48,1.48,1.48,0.0,1.48
+city_borough,Springfield Gardens,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0
+city_borough,Woodside,Unrounded Pallets,total_pallets_unrounded,1,1.62,1.62,1.62,0.0,1.62,1.62,1.62,0.0,1.62
+city_borough,Woodside,Rounded Pallets,total_pallets_rounded,1,3.0,3.0,3.0,0.0,3.0,3.0,3.0,0.0,3.0
+city_borough,Woodside,Pallets per Order,pallets_per_order,1,0.81,0.81,0.81,0.0,0.81,0.81,0.81,0.0,0.81
+city_borough,Woodside,Total Orders,total_orders,1,2.0,2.0,2.0,0.0,2.0,2.0,2.0,0.0,2.0

@@ -1,0 +1,359 @@
+customer_id,customer_name,latitude,longitude,total_pallets_unrounded,total_pallets_rounded,total_orders,address,city_borough,pallets_per_order,day_of_week
+5104367409,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370764,Aids Center of Queens County,40.605182,-73.751962,1.0,1,1,"1600 Central Avenue, Far Rockaway, NY 11691",,1.0,Tuesday
+5104372649,Hebron SDA Church,40.676753,-73.947804,1.0,1,1,"1256 Dean Street, Brooklyn, NY 11216",,1.0,Tuesday
+5104372648,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370794,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370793,Las Maravillas Del Exodo,40.675836,-73.883943,1.0,1,1,"302 Elton Street, Brooklyn, NY 11208",,1.0,Tuesday
+5104370792,Bensonhurst Council Jewish Org.,40.602669,-73.996676,1.0,1,1,"8635 21st Avenue, Brooklyn, NY 11214",,1.0,Tuesday
+5104370791,Salt & Sea Mission Church Inc.,40.58839,-73.983668,1.0,1,1,"2417-2419 Stillwell Avenue, Brooklyn, NY 11223",,1.0,Tuesday
+5104370789,YMCA Community Market â€“ Coney Island YMCA,40.573421,-73.995015,1.0,1,1,"2980 West 29th Street, Brooklyn, NY 11224",,1.0,Tuesday
+5104370788,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370766,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370765,Solid Rock SDA Church,40.592942,-73.782638,1.0,1,1,"52-05 Rockaway Beach Blvd, Arverne, NY 11692",,1.0,Tuesday
+5104370763,Our Lady of Light Food Pantry,40.689704,-73.763078,1.0,1,1,"118-22 Riverton Street, St. Albans, NY 11412",,1.0,Tuesday
+5104372651,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370762,Bethany Baptist Church of Jamaica,40.690081,-73.791892,1.0,1,1,"157-11 111th Avenue, Jamaica, NY 11433",,1.0,Tuesday
+5104370761,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370760,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370759,New York Common Pantry,40.795967,-73.949119,1.0,1,1,"8 East 109th Street, New York, NY 10029",,1.0,Tuesday
+5104370758,Crossroads Community Services Inc.,40.757543,-73.972917,1.0,1,1,"108 East 51st Street, New York, NY 10022",,1.0,Tuesday
+5104370757,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370756,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370755,Redeemed Christian Church of God,40.828939,-73.916616,1.0,1,1,"1001 Morris Avenue, Bronx, NY 10456",,1.0,Tuesday
+5104370754,St. Jerome's Hands Community Center,40.809927,-73.924866,1.0,1,1,"330 East 138th Street, Bronx, NY 10454",,1.0,Tuesday
+5104370753,The Voices of Hagar,40.756866,-73.872861,1.0,1,1,"95-18 Northern Blvd, Jackson Heights, NY 11372",,1.0,Tuesday
+5104372650,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104372652,St. Edward Food Pantry,40.51171435,-74.22125108,1.0,1,1,"6581 Hylan Blvd, Staten Island, NY 10309",,1.0,Tuesday
+5104370751,Flushing Jewish Community Council,40.757788,-73.79469,1.0,1,1,"171-39 Northern Blvd, Flushing, NY 11358",,1.0,Tuesday
+5104680171,Las Maravillas Del Exodo,40.675836,-73.883943,1.0,1,1,"302 Elton Street, Brooklyn, NY 11208",,1.0,Tuesday
+5104725293,Unitarian Church of All Souls,40.775377,-73.95858,1.0,1,1,"1157 Lexington Avenue, New York, NY 10021",,1.0,Tuesday
+5104725292,Bnai Raphael Chesed Organization,40.619733,-73.937662,1.0,1,1,"3846 Flatlands Avenue, Brooklyn, NY 11234",,1.0,Tuesday
+5104725291,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104682585,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104682584,Union Grove Missionary Baptist Church,40.832891,-73.889299,1.0,1,1,"1488 Hoe Avenue, Bronx, NY 10460",,1.0,Tuesday
+5104682583,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104680175,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104680174,Every Day is a Miracle co The Almond Tree Church,40.86185,-73.90176,1.0,1,1,"2424 Jerome Ave, Bronx, NY 10468",,1.0,Tuesday
+5104680173,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104680172,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104680170,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104372653,Mesivtha of Staten Island,40.528325,-74.215029,1.0,1,1,"1870 Drumgoole Road East, Staten Island, NY 10309",,1.0,Tuesday
+5104636153,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104636152,J.U.S.T.I.C.E. Organization,40.595639,-73.761226,1.0,1,1,"223 Beach 28th Street, Far Rockaway, NY 11691",,1.0,Tuesday
+5104636151,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104574328,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104574327,Mobile Pantry @ Spofford Ave,40.814509,-73.886389,1.0,1,1,"1300 Spofford Ave, Bronx, NY 10474",,1.0,Tuesday
+5104574326,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104372658,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104372657,Greenpoint Reformed Church,40.729376,-73.955224,1.0,1,1,"136 Milton Street, Brooklyn, NY 11222",,1.0,Tuesday
+5104372655,Salvation Army Port Richmond Corps,40.62639,-74.13296,1.0,1,1,"1295 Forest Avenue, Staten Island, NY 10302",,1.0,Tuesday
+5104372654,Christian Pentecostal Church,40.604751,-74.092521,1.0,1,1,"910 Richmond Road, Staten Island, NY 10304",,1.0,Tuesday
+5104370752,Make the Road New York - Queens,40.750136,-73.860766,1.0,1,1,"104-19 Roosevelt Avenue, Corona, NY 11368",,1.0,Tuesday
+5104370750,BFFY - Our Lady of Lourdes Outreach,40.723911,-73.737175,1.0,1,1,"92-96 220th Street, Queens Village, NY 11428",,1.0,Tuesday
+5104367410,PS 43X Jonas Bronck Academy,40.806351,-73.921196,1.0,1,1,"165 Brown Place, Bronx, NY 10454",,1.0,Tuesday
+5104370548,St. Clement's Food Pantry,40.761355,-73.991607,1.0,1,1,"423 West 46th Street, New York, NY 10036",,1.0,Tuesday
+5104370558,Iglesia De Dios Pentecostal,40.888019,-73.831301,1.0,1,1,"3801 Dyre Avenue, Bronx, NY 10466",,1.0,Tuesday
+5104370557,Christ Apostolic Church WOSEM,40.855629,-73.894076,1.0,1,1,"442 East 183rd Street, Bronx, NY 10458",,1.0,Tuesday
+5104370556,Christ Jesus Baptist Church,40.809409,-73.907429,1.0,1,1,"431 Southern Blvd, Bronx, NY 10455",,1.0,Tuesday
+5104370555,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370554,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370553,Co-Op City Seventh Day Adventist Church,40.880211,-73.831498,1.0,1,1,"1010 Baychester Avenue, Bronx, NY 10475",,1.0,Tuesday
+5104370552,Immaculate Conception Church,40.876735,-73.864435,1.0,1,1,"754 East Gun Hill Road, Bronx, NY 10467",,1.0,Tuesday
+5104370551,St. Luke's Senior Community Program,40.885043,-73.859564,1.0,1,1,"777 East 222nd Street, Bronx, NY 10467",,1.0,Tuesday
+5104370550,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370549,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370547,Church of God Feeding Hungry,40.672378,-73.960994,1.0,1,1,"836 Classon Avenue, Brooklyn, NY 11238",,1.0,Tuesday
+5104370560,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370546,St. Philip's Episcopal,40.681486,-73.933169,1.0,1,1,"265 Decatur Street, Brooklyn, NY 11233",,1.0,Tuesday
+5104370545,Khalil Gibran International Academy,40.686499,-73.979649,1.0,1,1,"382 Schermerhorn Street, Brooklyn, NY 11217",,1.0,Tuesday
+5104370544,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370543,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370542,"The Lehman College Association, Herbert H. Lehman",40.87161647,-73.89471529,1.0,1,1,"2775 Jerome Ave, Bronx, NY 10468",,1.0,Tuesday
+5104370541,Church of St. Nicholas of Tolentine,40.861503,-73.906077,1.0,1,1,"2345 University Avenue, Bronx, NY 10468",,1.0,Tuesday
+5104370538,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104367413,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104367412,KHCC Food Pantry,40.877505,-73.90033,1.0,1,1,"3101 Kingsbridge Terrace, Bronx, NY 10463",,1.0,Tuesday
+5104367411,Part of the Solution (POTS),40.865649,-73.886421,1.0,1,1,"2759 Webster Avenue, Bronx, NY 10458",,1.0,Tuesday
+5104370559,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370561,Project Hospitality Inc.,40.625166,-74.079365,1.0,1,1,"205 Canal St, Staten Island, NY 10304",,1.0,Tuesday
+5104370749,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370574,First United Christian Church,40.637775,-74.079776,1.0,1,1,"109 Victory Blvd, Staten Island, NY 10301",,1.0,Tuesday
+5104370748,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370747,Mt. Olivet Gospel Church Food Pantry,40.756436,-73.871206,1.0,1,1,"33-27 97th Street, Corona, NY 11368",,1.0,Tuesday
+5104370745,Morris Brown AME Church,40.673662,-73.7935,1.0,1,1,"145-03 Rockaway Blvd, Jamaica, NY 11436",,1.0,Tuesday
+5104370744,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370743,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370741,Bnai Raphael Chesed Organization,40.619733,-73.937662,1.0,1,1,"3846 Flatlands Avenue, Brooklyn, NY 11234",,1.0,Tuesday
+5104370740,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370577,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370576,United Church of Praise Healthy Heart,40.614487,-74.085612,1.0,1,1,"487 Vanderbilt Avenue, Staten Island, NY 10304",,1.0,Tuesday
+5104370575,Staten Island Liberian Community,40.614572,-74.082129,1.0,1,1,"180 Park Hill Avenue, Staten Island, NY 10304",,1.0,Tuesday
+5104370573,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370562,The Salvation Army Sunset Park Corps,40.644711,-74.009683,1.0,1,1,"520 50th Street, Brooklyn, NY 11220",,1.0,Tuesday
+5104370572,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370571,Chambers Memorial Baptist Church,40.802141,-73.93614,1.0,1,1,"219 East 123rd Street, New York, NY 10035",,1.0,Tuesday
+5104370570,BronxWorks-Morris Senior Center,40.855076,-73.904199,1.0,1,1,"80 East 181st Street, Bronx, NY 10453",,1.0,Tuesday
+5104370569,Jewish Community Council of Pelham Parkway,40.855218,-73.86574,1.0,1,1,"2157 Holland Avenue, Bronx, NY 10462",,1.0,Tuesday
+5104370568,Union Grove Missionary Baptist Church,40.832891,-73.889299,1.0,1,1,"1488 Hoe Avenue, Bronx, NY 10460",,1.0,Tuesday
+5104370567,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370566,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5104370565,Community Healthcare Network,40.676155,-73.899041,1.0,1,1,"2581 Atlantic Avenue, Brooklyn, NY 11207",,1.0,Tuesday
+5104370564,First Presbyterian Church,40.696856,-73.993321,1.0,1,1,"124 Henry Street, Brooklyn, NY 11201",,1.0,Tuesday
+5104370563,Gospel Tabernacle Church of Jesus Christ Inc.,40.648661,-73.955278,1.0,1,1,"2314 Snyder Avenue, Brooklyn, NY 11226",,1.0,Tuesday
+5104725294,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Tuesday
+5105027255,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065481,St. Alban's Baptist Church,40.690773,-73.754449,1.0,1,1,"196-20 119th Avenue, St. Albans, NY 11412",,1.0,Wednesday
+5105100567,Bedford Central Presbyterian Church,40.676836,-73.949271,1.0,1,1,"1200 Dean Street, Brooklyn, NY 11216",,1.0,Wednesday
+5105100566,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065494,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065493,Spanish Soundview SDA,40.815052,-73.861258,1.0,1,1,"1822 Lacombe Avenue, Bronx, NY 10473",,1.0,Wednesday
+5105065492,New Covenant Community Development Corp.,40.828841,-73.90312,1.0,1,1,"1175 Boston Road, Bronx, NY 10456",,1.0,Wednesday
+5105065491,HS 440 X DeWitt Clinton High School,40.882178,-73.88691,1.0,1,1,"100 West Mosholu Parkway South, Bronx, NY 10468",,1.0,Wednesday
+5105065490,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065489,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065488,St. James Holiness Church,40.666876,-73.917814,1.0,1,1,"89 Legion Street, Brooklyn, NY 11212",,1.0,Wednesday
+5105065487,Fort Greene Council Hazel Brooks Neighborhood Ctr.,40.638891,-73.958877,1.0,1,1,"961 Ocean Avenue, Lower Level, Brooklyn, NY 11226",,1.0,Wednesday
+5105065485,Shorefront Jewish Comm. Council,40.576348,-73.967318,1.0,1,1,"128 Brighton Beach Avenue, Brooklyn, NY 11235",,1.0,Wednesday
+5105065484,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065483,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105065482,Mt. Sinai SDA Church,40.721159,-73.740072,1.0,1,1,"217-10 93rd Ave, Queens Village, NY 11428",,1.0,Wednesday
+5105065480,Taurus Associates,40.672149,-73.734466,1.0,1,1,"240-08 135th Avenue, Rosedale, NY 11422",,1.0,Wednesday
+5105100569,"MUNA Social Service, Inc.",40.675864,-73.855033,1.0,1,1,"80-50 Pitkin Ave, Ozone Park, NY 11417",,1.0,Wednesday
+5105065479,Vets Inc,40.668109,-73.756857,1.0,1,1,"143-17 Springfield Blvd, Springfield Gardens, NY 11413",,1.0,Wednesday
+5105065478,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105061683,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105061682,Gotham Food Pantry,40.787113,-73.945024,1.0,1,1,"1955 Second Avenue, New York, NY 10029",,1.0,Wednesday
+5105061681,Holy Cross Church Crossroads,40.757658,-73.990781,1.0,1,1,"329 West 42nd Street, New York, NY 10036",,1.0,Wednesday
+5105061680,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105061679,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105061678,Child Development Support Corp.,40.688478,-73.959936,1.0,1,1,"352-358 Classon Avenue, Brooklyn, NY 11238",,1.0,Wednesday
+5105061677,Full Gospel Assembly,40.66435,-73.956641,1.0,1,1,"131 Sullivan Place, Brooklyn, NY 11225",,1.0,Wednesday
+5105061676,Calvary Pentecostal Church,40.654342,-73.961095,1.0,1,1,"151 Woodruff Avenue, Brooklyn, NY 11226",,1.0,Wednesday
+5105061675,LifeBridge NY Food Pantry,40.623491,-73.937774,1.0,1,1,"1895 Flatbush Ave, Brooklyn, NY 11210",,1.0,Wednesday
+5105061674,GRANT HOUSE UNITY CORPORATION,40.619954,-73.934002,1.0,1,1,"2046 FLATBUSH AVENUE, Brooklyn, NY 11234",,1.0,Wednesday
+5105061673,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057263,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105100568,Jewish Comm Council of Canarsie,40.651533,-73.88538,1.0,1,1,"1170 Pennsylvania Avenue, Brooklyn, NY 11239",,1.0,Wednesday
+5105100570,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105027256,Father's Heart Ministries,40.728014,-73.980741,1.0,1,1,"543-545 East 11th Street, New York, NY 10009",,1.0,Wednesday
+5105359815,International Pentecostal,40.653809,-73.91836,1.0,1,1,"9202-14 Church Avenue, Brooklyn, NY 11236",,1.0,Wednesday
+5105420034,Life Together Works Inc.,40.82385,-73.844681,1.0,1,1,"2347 Lafayette Avenue, Bronx, NY 10473",,1.0,Wednesday
+5105420033,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105420032,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105420031,Jamaica Queens Wesleyan Church,40.675533,-73.742885,1.0,1,1,"134-49 228th Street, Laurelton, NY 11413",,1.0,Wednesday
+5105420030,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105419088,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105419087,Every Day is a Miracle - Harvest Hand Food Pantry,40.842975,-73.846291,1.0,1,1,"2626 East Tremont Avenue, Bronx, NY 10561",,1.0,Wednesday
+5105419086,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105403958,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105403956,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105386196,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105379895,Medgar Evers College,40.666736,-73.956506,1.0,1,1,"1638 Bedford Avenue, Brooklyn, NY 11225",,1.0,Wednesday
+5105379894,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105359816,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105359814,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105173625,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105348571,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105348570,Olivet Gospel Church Community Food Distribution Program,40.889389,-73.831265,1.0,1,1,"3900 Dyre Ave, Bronx, NY 10466",,1.0,Wednesday
+5105348569,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105297579,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105297578,Hope For Humanity Inc.,40.866337,-73.921732,1.0,1,1,"111- 113 Vermilyea Avenue, New York, NY 10034",,1.0,Wednesday
+5105297577,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105193215,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105193214,SCO Family of Services/Bethany House,40.699435,-73.926353,1.0,1,1,"164 Suydam Street, Brooklyn, NY 11221",,1.0,Wednesday
+5105193213,P.S. 308 Clara Cardwell,40.688695,-73.935499,1.0,1,1,"616 Quincy Street, Brooklyn, NY 11221",,1.0,Wednesday
+5105193212,Flatbush SDA Church,40.648058,-73.959556,1.0,1,1,"261 East 21st  Street, Brooklyn, NY 11226",,1.0,Wednesday
+5105193211,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105173628,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105173627,Mana Del Cielo,40.844511,-73.907572,1.0,1,1,"1700 Weeks Avenue, Bronx, NY 10457",,1.0,Wednesday
+5105173626,Gethsemane Baptist Church,40.842956,-73.889532,1.0,1,1,"771 Fairmount Place, Bronx, NY 10460",,1.0,Wednesday
+5105057262,New Haven SDA Church,40.674865,-73.955524,1.0,1,1,"634 Prospect Place, Brooklyn, NY 11216",,1.0,Wednesday
+5105057261,Church of God Inc.,40.660127,-73.926,1.0,1,1,"1011 Winthrop Street, Brooklyn, NY 11212",,1.0,Wednesday
+5105057260,Bushwick United Seniors Inc.,40.689389,-73.91793,1.0,1,1,"1139 Bushwick Avenue, Brooklyn, NY 11221",,1.0,Wednesday
+5105029345,J.U.S.T.I.C.E. Organization,40.595639,-73.761226,1.0,1,1,"223 Beach 28th Street, Far Rockaway, NY 11691",,1.0,Wednesday
+5105029363,Project Hope Charities,40.670977,-73.769835,1.0,1,1,"170-20 140th Avenue, Jamaica, NY 11434",,1.0,Wednesday
+5105029362,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029357,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029356,"SCAN-Harbor, Inc.",40.831059,-73.925337,1.0,1,1,"40 E 164th St, Bronx, NY 10452",,1.0,Wednesday
+5105029355,Victory SDA Church,40.871261,-73.849997,1.0,1,1,"1271 Burke Avenue, Bronx, NY 10469",,1.0,Wednesday
+5105029354,Olivet Gospel Church Community Food Distribution Program,40.889389,-73.831265,1.0,1,1,"3900 Dyre Ave, Bronx, NY 10466",,1.0,Wednesday
+5105029353,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029352,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029351,Bronx Community College,40.857394,-73.909698,1.0,1,1,"2155 University Avenue, Bronx, NY 10453",,1.0,Wednesday
+5105029350,Life Together Works Inc.,40.82385,-73.844681,1.0,1,1,"2347 Lafayette Avenue, Bronx, NY 10473",,1.0,Wednesday
+5105029349,"The Disciples of Galilee, Inc.",40.821616,-73.848646,1.0,1,1,"725 Castle Hill Avenue, Bronx, NY 10473",,1.0,Wednesday
+5105029348,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029347,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029346,Jewish Community Council of the Rockaway Peninsula,40.605645,-73.751391,1.0,1,1,"1525 Central Avenue, Far Rockaway, NY 11691",,1.0,Wednesday
+5105029344,Bethel AME Church,40.588749,-73.804391,1.0,1,1,"215 Beach 77th  Street, Arverne, NY 11692",,1.0,Wednesday
+5105057259,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029343,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105028785,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105028784,Unitarian Church of All Souls,40.775377,-73.95858,1.0,1,1,"1157 Lexington Avenue, New York, NY 10021",,1.0,Wednesday
+5105028783,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105028771,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105028770,Christ Temple of the Apostolic Faith,40.808655,-73.941592,1.0,1,1,"13 West 128th Street, New York, NY 10027",,1.0,Wednesday
+5105028768,Baruch College,40.740596,-73.983938,1.0,1,1,"55 Lexington Avenue, Rm 1-116 , 24th Street loading dock between Lexington & 3rd Avenue, New York, NY 10010",,1.0,Wednesday
+5105028767,Borough of Manhattan Community College,40.719462,-74.012341,1.0,1,1,"224 West Street, New York, NY 10007",,1.0,Wednesday
+5105028766,PS 142 M Amalia Castro,40.718383,-73.984452,1.0,1,1,"100 Attorney Street, New York, NY 10002",,1.0,Wednesday
+5105028765,The Lower Eastside Girls ClubÂ,40.723802,-73.976319,1.0,1,1,"402 East 8th Street, New York, NY 10009",,1.0,Wednesday
+5105028764,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105027259,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105027258,Hunter College Program B,40.768973,-73.965367,1.0,1,1,"695 Park Avenue, New York, NY 10065",,1.0,Wednesday
+5105027257,Holy Apostles Soup Kitchen,40.749416,-73.999188,1.0,1,1,"296 9th Avenue, New York, NY 10001",,1.0,Wednesday
+5105029364,Queensboro SDA Church,40.718217,-73.731704,1.0,1,1,"96-50 222nd Street, Queens Village, NY 11429",,1.0,Wednesday
+5105029365,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029864,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029865,Pentecost Care Community Outreach,40.882228,-73.866922,1.0,1,1,"621 East 216th Street, Bronx, NY 10467",,1.0,Wednesday
+5105057258,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057257,PS 111 Q Jacob Blackwell,40.758831,-73.93938,1.0,1,1,"37-15 13th Street, Long Island City, NY 11101",,1.0,Wednesday
+5105057256,PS 19 Q Marino Jeantet,40.749381,-73.867354,1.0,1,1,"40-10 99th St., Corona, NY 11368",,1.0,Wednesday
+5105057255,Project Lead,40.70392163,-73.82616507,1.0,1,1,"85-12 126th Street, Kew Gardens, NY 11415",,1.0,Wednesday
+5105057254,"The Harding Ford Vision, Inc.",40.698229,-73.797456,1.0,1,1,"157-22 Tuskegee Airmen Way, Jamaica, NY 11433",,1.0,Wednesday
+5105057253,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057216,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057215,Full Effect Gospel Ministries,40.668427,-73.8779,1.0,1,1,"900 New Lots Ave, Brooklyn, NY 11208",,1.0,Wednesday
+5105057214,Society of St. Vincent de Paul,40.653232,-73.939714,1.0,1,1,"520 Linden Boulevard, Brooklyn, NY 11203",,1.0,Wednesday
+5105057212,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057208,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057206,Every Day is a Miracle co The Almond Tree Church,40.86185,-73.90176,1.0,1,1,"2424 Jerome Ave, Bronx, NY 10468",,1.0,Wednesday
+5105057205,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057204,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057203,Gethsemane SDA Church,40.663955,-73.950312,1.0,1,1,"357 Empire Blvd., Brooklyn, NY 11225",,1.0,Wednesday
+5105057201,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057200,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105057199,CAMBA Food Pantry,40.648574,-73.957531,1.0,1,1,"21 Snyder Avenue, Brooklyn, NY 11226",,1.0,Wednesday
+5105057198,Community Services Housing Development Corp.,40.668898,-73.920053,1.0,1,1,"547 Howard Avenue, Brooklyn, NY 11233",,1.0,Wednesday
+5105057197,Cornerstone SDA Church,40.674586,-73.89657,1.0,1,1,"138 Pennsylvania Avenue, Brooklyn, NY 11207",,1.0,Wednesday
+5105057196,PS 297 K Abraham Stockton School,40.697781,-73.947809,1.0,1,1,"700 Park Avenue, Brooklyn, NY 11206",,1.0,Wednesday
+5105054417,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105054416,Yeshua Worldwide Ministries Food Pantry,40.725439,-73.880429,1.0,1,1,"7911 Caldwell Avenue, Middle Village, NY 11379",,1.0,Wednesday
+5105054415,The Legacy Center Community Development Corp.,40.701741,-73.892395,1.0,1,1,"71-02 Cypress Hills Street, Glendale, NY 11385",,1.0,Wednesday
+5105054414,WOSSEM Charities,40.692985,-73.79938,1.0,1,1,"108-02 Sutphin Blvd, Jamaica, NY 11435",,1.0,Wednesday
+5105054413,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105053895,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029867,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105029866,Spanish SDA Church,40.824457,-73.899622,1.0,1,1,"1038 Prospect Avenue, Bronx, NY 10459",,1.0,Wednesday
+5105420035,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Wednesday
+5105625631,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627429,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105630509,We Create Community Food Pantry,40.607519,-74.001685,1.0,1,1,"8501 New Utrecht Avenue, Brooklyn, NY 11214",,1.0,Thursday
+5105630508,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105630502,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105630501,Broadway Community Inc.,40.806822,-73.965102,1.0,1,1,"601 West 114th Street, New York, NY 10025",,1.0,Thursday
+5105630500,Temple Sharaay Tefila,40.773797,-73.956166,1.0,1,1,"250 East 79th Street, New York, NY 10075",,1.0,Thursday
+5105630499,The Cuny Graduate Center,40.748822,-73.984268,1.0,1,1,"16 E 35 St New York, New York, NY 10016",,1.0,Thursday
+5105630498,Agape Social Services Beulah Church,40.680642,-73.946297,1.0,1,1,"956 Marcy Avenue, Brooklyn, NY 11216",,1.0,Thursday
+5105630497,Bethel Community Outreach,40.685839,-73.944422,1.0,1,1,"344 Tompkins Avenue, Brooklyn, NY 11216",,1.0,Thursday
+5105630496,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627451,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627449,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627448,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627447,Crossover Baptist Church Comm. Outreach Help Cntr.,40.681899,-73.854296,1.0,1,1,"85-12 101st Avenue, Ozone Park, NY 11416",,1.0,Thursday
+5105627446,World Restoration Center,40.661325,-73.878954,1.0,1,1,"820 Stanley Avenue, Brooklyn, NY 11207",,1.0,Thursday
+5105627445,Original Pentecostal Apostolic Church,40.641498,-73.939775,1.0,1,1,"3901 Avenue D, Brooklyn, NY 11203",,1.0,Thursday
+5105627444,Council Of People Organization (COPO),40.631136,-73.966459,1.0,1,1,"1077 Coney Island Avenue, Brooklyn, NY 11230",,1.0,Thursday
+5105627443,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627442,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627440,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627439,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627438,City of Faith Church of God,40.876713,-73.866894,1.0,1,1,"3453 White Plains Road, Bronx, NY 10467",,1.0,Thursday
+5105627437,PS 32 X Belmont,40.852092,-73.885891,1.0,1,1,"690 E 183rd St, Bronx, NY 10458",,1.0,Thursday
+5105627436,Every Day is a Miracle - Harvest Hand Food Pantry,40.842975,-73.846291,1.0,1,1,"2626 East Tremont Avenue, Bronx, NY 10561",,1.0,Thursday
+5105627435,Fairmont Neighborhood School,40.834157,-73.887512,1.0,1,1,"1550 Vyse Ave, Bronx, NY 10460",,1.0,Thursday
+5105627434,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627433,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627432,"Feeding with TLC, Inc.",40.629759,-74.081236,1.0,1,1,"175 Beach Street, Staten Island, NY 10304",,1.0,Thursday
+5105630510,The Hope Center Development Corporation,40.657149,-73.918561,1.0,1,1,"409 East 95th Street, Brooklyn, NY 11212",,1.0,Thursday
+5105630511,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105703957,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105874246,Missionary Church of Christ,40.82612,-73.915561,1.0,1,1,"937 Teller Avenue, Bronx, NY 10451",,1.0,Thursday
+5106038443,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5106038442,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5106038441,Power Praise and Deliverance Inc.,40.859752,-73.900161,1.0,1,1,"120 East 184th Street, Bronx, NY 10468",,1.0,Thursday
+5106038440,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105906467,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105906466,"Our Lady Charity For The Community, Inc.",40.636749,-73.920568,1.0,1,1,"5816 Farragut Road, Brooklyn, NY 11234",,1.0,Thursday
+5105906465,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105905380,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105905379,More Than Conquerors Global Ministries Inc.,40.669192,-73.782282,1.0,1,1,"153-56 Rockaway Blvd, Jamaica, NY 11434",,1.0,Thursday
+5105905378,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105874248,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105874247,Whosoever Will Baptist Church,40.849231,-73.920809,1.0,1,1,"1651 Popham Avenue, Bronx, NY 10453",,1.0,Thursday
+5105874245,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105703958,Medgar Evers College,40.666736,-73.956506,1.0,1,1,"1638 Bedford Avenue, Brooklyn, NY 11225",,1.0,Thursday
+5105833034,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105833033,Isaiah's Temple of Mt. Hope,40.6758,-73.878215,1.0,1,1,"862 Glenmore Avenue, Brooklyn, NY 11208",,1.0,Thursday
+5105833032,Make the Road New York,40.698505,-73.915575,1.0,1,1,"301 Grove Street, Brooklyn, NY 11237",,1.0,Thursday
+5105833031,Child Development Support Corp.,40.688478,-73.959936,1.0,1,1,"352-358 Classon Avenue, Brooklyn, NY 11238",,1.0,Thursday
+5105833030,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105709712,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105709711,Full Gospel Tabernacle Food Pantry,40.595557,-73.773869,1.0,1,1,"361 Beach 42nd Street, Far Rockaway, NY 11691",,1.0,Thursday
+5105709710,Jamaica Queens Wesleyan Church,40.675533,-73.742885,1.0,1,1,"134-49 228th Street, Laurelton, NY 11413",,1.0,Thursday
+5105709709,St. Alban's Baptist Church,40.690773,-73.754449,1.0,1,1,"196-20 119th Avenue, St. Albans, NY 11412",,1.0,Thursday
+5105709708,"Vets Inc, Hollis Gardens",40.706455,-73.755109,1.0,1,1,"202-14 Hollis Avenue, Queens Village, NY 11429",,1.0,Thursday
+5105709706,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105703959,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105627430,Jewish Community Center of Staten Island,40.594916,-74.125393,1.0,1,1,"1466 Manor Road, Staten Island, NY 10314",,1.0,Thursday
+5105627428,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625632,Kings Bay YM-YWHA Inc.,40.598817,-73.94157,1.0,1,1,"3495 Nostrand Avenue, Brooklyn, NY 11229",,1.0,Thursday
+5105627427,Maranatha SDA Church,40.658408,-73.929401,1.0,1,1,"899 Winthrop Street, Brooklyn, NY 11203",,1.0,Thursday
+5105625667,Iglesia Cristiana Valle De Jesus Inc.,40.70765,-73.944981,1.0,1,1,"141 Manhattan Avenue, Brooklyn, NY 11206",,1.0,Thursday
+5105625666,Mamre SDA Church,40.632461,-73.928311,1.0,1,1,"1623-27 Utica Ave, Brooklyn, NY 11234",,1.0,Thursday
+5105625665,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625664,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625663,St. Paul Pentecostal Kingdom Builders Food Pantry,40.680306,-73.913947,1.0,1,1,"133 Thomas S Boyland Street, Brooklyn, NY 11233",,1.0,Thursday
+5105625662,Mt. Hebron Church of Christ,40.67170712,-73.88507368,1.0,1,1,"905 Sutter Avenue, Brooklyn, NY 11207",,1.0,Thursday
+5105625661,International Pentecostal,40.653809,-73.91836,1.0,1,1,"9202-14 Church Avenue, Brooklyn, NY 11236",,1.0,Thursday
+5105625660,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625659,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625658,Christ Apostolic Church Goke Food Pantry,40.638584,-73.972577,1.0,1,1,"622 Cortelyou Road, Brooklyn, NY 11218",,1.0,Thursday
+5105625657,Church of St. Mark,40.668586,-73.944361,1.0,1,1,"1417 Union Street, Brooklyn, NY 11213",,1.0,Thursday
+5105625656,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625655,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625654,Garden of Prayer,40.846386,-73.898403,1.0,1,1,"1874 Washington Avenue, Bronx, NY 10457",,1.0,Thursday
+5105625653,The Salvation Army Bronx Citadel,40.822679,-73.913614,1.0,1,1,"425 East 159th Street, Bronx, NY 10451",,1.0,Thursday
+5105625652,Our Lady of Fatima Church,40.762581,-73.88855,1.0,1,1,"25-02 80th  Street, East Elmhurst, NY 11370",,1.0,Thursday
+5105625651,PS 111 Q Jacob Blackwell,40.758831,-73.93938,1.0,1,1,"37-15 13th Street, Long Island City, NY 11101",,1.0,Thursday
+5105625650,Roosevelt Island Disabled Association's Food Pantry,40.761957,-73.949679,1.0,1,1,"548A Main Street, Lower Level, New York, NY 10044",,1.0,Thursday
+5105625649,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625648,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625647,Evangel Food Pantry,40.754378,-73.93711,1.0,1,1,"39-21 Cresent St., Long Island City, NY 11101",,1.0,Thursday
+5105625646,Tzu-Chi Foundation Food Pantry,40.763855,-73.828522,1.0,1,1,"137-77 Northern Blvd., Flushing, NY 11354",,1.0,Thursday
+5105625644,The Salvation Army Jamaica Citadel,40.705201,-73.799256,1.0,1,1,"90-23 161st Street, Jamaica, NY 11432",,1.0,Thursday
+5105625643,Brooks Memorial UMC,40.688564,-73.803554,1.0,1,1,"143-22 109th Avenue, Jamaica, NY 11435",,1.0,Thursday
+5105625642,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625634,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625633,PAYO Food Pantry,40.632155,-73.966721,1.0,1,1,"1045 CONEY ISLAND AVENUE, Brooklyn, NY 11230",,1.0,Thursday
+5105625668,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625669,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625670,Iglesia Pentecostal La Hermosa,40.681902,-73.878369,1.0,1,1,"3161 Fulton Street, Brooklyn, NY 11208",,1.0,Thursday
+5105625685,Davidson Community Center,40.853537,-73.908741,1.0,1,1,"2038 Davidson Avenue, Bronx, NY 10453",,1.0,Thursday
+5105627426,Faith Based Food Distribution Dev. Corp.,40.680271,-73.930654,1.0,1,1,"121 Chauncey Street, Brooklyn, NY 11233",,1.0,Thursday
+5105627425,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625695,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625694,Blessed Assurance Church of God,40.659288,-73.922919,1.0,1,1,"1060 Clarkson Avenue, Brooklyn, NY 11212",,1.0,Thursday
+5105625693,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625692,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625691,Faith Apostolic Gospel Temple,40.885578,-73.854923,1.0,1,1,"3956 Bronxwood Avenue, Bronx, NY 10466",,1.0,Thursday
+5105625690,Church of St. Frances of Rome,40.895809,-73.853592,1.0,1,1,"760 Whitehall Place, Bronx, NY 10466",,1.0,Thursday
+5105625689,New Life Holiness Caring Hands Food Pantry,40.897448,-73.851808,1.0,1,1,"4401 Barnes Avenue, Bronx, NY 10466",,1.0,Thursday
+5105625688,Bronx Bethany Community Corporation,40.886824,-73.852194,1.0,1,1,"964 East 227 Street, Bronx, NY 10466",,1.0,Thursday
+5105625687,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625686,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625684,HS 342 X International School of Liberal Arts,40.870293,-73.898309,1.0,1,1,"2780 Reservoir, Bronx, NY 10468",,1.0,Thursday
+5105625671,Church of God in Christ,40.651657,-73.918683,1.0,1,1,"627-29 Remsen Avenue, Brooklyn, NY 11236",,1.0,Thursday
+5105625683,Cabrini Immigrant Services,40.869267,-73.920507,1.0,1,1,"630 ISHAM STREET, New York, NY 10034",,1.0,Thursday
+5105625682,St. Mark the Evangelist Church,40.815594,-73.938389,1.0,1,1,"67 West 138th Street, New York, NY 10037",,1.0,Thursday
+5105625681,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625680,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625679,Way Out Church Ministries Inc.,40.814056,-73.914717,1.0,1,1,"518 East 148th Street, Bronx, NY 10455",,1.0,Thursday
+5105625678,St. Charles Borromeo Church,40.819395,-73.941612,1.0,1,1,"211 West 141st Street, New York, NY 10030",,1.0,Thursday
+5105625677,First Corinthian Baptist Church,40.802841,-73.952813,1.0,1,1,"1912 Adam Clayton Powell Jr Boulevard, New York, NY 10026",,1.0,Thursday
+5105625676,National Council of Jewish Women,40.779242,-73.983105,1.0,1,1,"241 West 72nd Street, New York, NY 10023",,1.0,Thursday
+5105625675,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625674,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday
+5105625673,Church of the Living God,40.672074,-73.933604,1.0,1,1,"212 Schenectady Avenue, Brooklyn, NY 11213",,1.0,Thursday
+5105625672,Brooklyn Faith SDA Church,40.652471,-73.925014,1.0,1,1,"5518 Church Avenue, Brooklyn, NY 11203",,1.0,Thursday
+5106038445,Food Bank for New York City,40.80594755,-73.87299938,1.0,1,1,"355 Food Center Drive, Bronx, NY 10474",,1.0,Thursday

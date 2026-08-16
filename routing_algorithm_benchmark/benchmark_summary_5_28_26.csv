@@ -1,0 +1,7 @@
+Instance,Date,Algorithm,Total Stops,Trucks,Total Distance (km),Makespan (km),Total Latency (km-stops),Avg Latency (km),Max Load,Load StdDev,Dist Imprv (%),Makespan Imprv (%),Latency Imprv (%),Dist Ratio (Orig/Algo),Makespan Ratio (Orig/Algo),Latency Ratio (Orig/Algo)
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,Original / Realized Routes,171,38,1230.0633,62.5293,3027.4321,17.7043,14.71,2.84,0.0,0.0,0.0,1.0,1.0,1.0
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,Min-Max mTSP (Tour Partitioning),171,38,771.6619,62.5293,2492.9596,14.5787,29.53,7.88,37.3,0.0,17.7,1.594,1.0,1.214
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,CVRP ITP (Iterated Partitioning),171,38,918.4379,71.9869,2959.0823,17.3046,9.92,3.92,25.3,-15.1,2.3,1.339,0.869,1.023
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,MLP Geometric Scaling (Latency),171,38,1192.2712,89.6062,2512.0468,14.6903,20.87,4.22,3.1,-43.3,17.0,1.032,0.698,1.205
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,Bi-Objective (Makespan & Latency),171,38,1203.3114,66.3502,2632.2692,15.3934,19.13,3.92,2.2,-6.1,13.1,1.022,0.942,1.15
+anon_routed_orders_5_28_26 [5/28/2026],5/28/2026,OR-Tools (Guided Local Search),171,38,904.1659,62.2981,3129.1808,18.2993,10.0,4.42,26.5,0.4,-3.4,1.36,1.004,0.967

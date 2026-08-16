@@ -1,0 +1,25 @@
+Grouping,Category,Metric,Metric_Key,Count (Customers),Total Sum,Mean (Average),Median (50%),Std Dev,Min,Q1 (25%),Q3 (75%),IQR,Max
+Overall,All Customers,Unrounded Pallets,total_pallets_unrounded,95,4230.67,44.53,22.97,55.94,3.24,14.45,56.84,42.39,311.12
+Overall,All Customers,Rounded Pallets,total_pallets_rounded,95,5209.0,54.83,31.0,60.34,6.0,21.0,67.5,46.5,343.0
+Overall,All Customers,Pallets per Order,pallets_per_order,95,168.55,1.77,0.91,1.81,0.51,0.7,2.06,1.36,9.13
+Overall,All Customers,Total Orders,total_orders,95,2346.0,24.69,25.0,15.52,6.0,14.0,28.0,14.0,78.0
+city_borough,Bronx,Unrounded Pallets,total_pallets_unrounded,22,1474.3,67.01,40.46,78.66,4.95,17.6,66.57,48.97,311.12
+city_borough,Bronx,Rounded Pallets,total_pallets_rounded,22,1763.0,80.14,54.5,82.73,6.0,27.25,82.25,55.0,343.0
+city_borough,Bronx,Pallets per Order,pallets_per_order,22,47.72,2.17,1.01,2.19,0.56,0.79,2.43,1.64,8.33
+city_borough,Bronx,Total Orders,total_orders,22,699.0,31.77,27.0,19.29,6.0,25.0,29.0,4.0,75.0
+city_borough,Brooklyn,Unrounded Pallets,total_pallets_unrounded,33,1367.76,41.45,24.03,50.76,5.07,14.37,51.87,37.5,237.37
+city_borough,Brooklyn,Rounded Pallets,total_pallets_rounded,33,1697.0,51.42,32.0,54.56,7.0,21.0,65.0,44.0,249.0
+city_borough,Brooklyn,Pallets per Order,pallets_per_order,33,56.38,1.71,1.02,1.68,0.51,0.83,1.85,1.02,9.13
+city_borough,Brooklyn,Total Orders,total_orders,33,743.0,22.52,24.0,11.41,7.0,13.0,28.0,15.0,51.0
+city_borough,Manhattan,Unrounded Pallets,total_pallets_unrounded,13,199.05,15.31,11.81,11.62,3.24,5.9,21.43,15.53,44.56
+city_borough,Manhattan,Rounded Pallets,total_pallets_rounded,13,279.0,21.46,16.0,14.45,6.0,8.0,31.0,23.0,55.0
+city_borough,Manhattan,Pallets per Order,pallets_per_order,13,11.58,0.89,0.77,0.39,0.54,0.6,0.89,0.29,1.65
+city_borough,Manhattan,Total Orders,total_orders,13,210.0,16.15,14.0,8.64,6.0,8.0,24.0,16.0,32.0
+city_borough,New York,Unrounded Pallets,total_pallets_unrounded,4,134.65,33.66,26.6,18.68,20.19,23.98,36.28,12.3,61.27
+city_borough,New York,Rounded Pallets,total_pallets_rounded,4,178.0,44.5,40.0,17.62,30.0,31.5,53.0,21.5,68.0
+city_borough,New York,Pallets per Order,pallets_per_order,4,6.61,1.65,0.82,1.82,0.58,0.68,1.79,1.11,4.38
+city_borough,New York,Total Orders,total_orders,4,117.0,29.25,27.5,14.03,14.0,23.75,33.0,9.25,48.0
+city_borough,Queens,Unrounded Pallets,total_pallets_unrounded,23,1054.91,45.87,19.61,50.48,5.22,13.2,66.82,53.62,217.07
+city_borough,Queens,Rounded Pallets,total_pallets_rounded,23,1292.0,56.17,30.0,56.57,7.0,22.0,80.5,58.5,257.0
+city_borough,Queens,Pallets per Order,pallets_per_order,23,46.26,2.01,0.82,2.02,0.54,0.65,3.34,2.69,7.12
+city_borough,Queens,Total Orders,total_orders,23,577.0,25.09,23.0,17.68,7.0,15.0,27.5,12.5,78.0

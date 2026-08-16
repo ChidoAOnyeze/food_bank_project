@@ -1,0 +1,89 @@
+customer_id,customer_name,latitude,longitude,total_pallets_unrounded,total_pallets_rounded,total_orders,address,city_borough,pallets_per_order,day_of_week
+4027,Peruvian Civic Center of NY,40.755793,-73.883237,18.47,20,2,37-01 Bowne St,Flushing,9.24,Wednesday
+84103,International Pentecostal,40.653809,-73.91836,9.68,10,1,9202-14 Church Avenue,Brooklyn,9.68,Wednesday
+82716,Resurrection and Life Pentecostal Church,40.821759,-73.899073,8.53,9,1,870 East 163rd Street,Bronx,8.53,Wednesday
+85600,Life Together Works Inc.,40.82385,-73.844681,8.16,9,2,2347 Lafayette Avenue,Bronx,4.08,Wednesday
+80476,Unitarian Church of All Souls,40.775377,-73.95858,6.9,8,2,1157 Lexington Avenue,New York,3.45,Wednesday
+83956,The Campaign Against Hunger,40.660966,-73.874089,6.54,7,1,975 Shepherd Ave,Brooklyn,6.54,Wednesday
+85579,"MUNA Social Service, Inc.",40.675864,-73.855033,6.2,8,2,80-50 Pitkin Ave,Ozone Park,3.1,Wednesday
+85292,Mana Del Cielo,40.844511,-73.907572,5.69,7,2,1700 Weeks Avenue,Bronx,2.84,Wednesday
+81742,CAMBA Food Pantry,40.648574,-73.957531,5.63,7,2,21 Snyder Avenue,Brooklyn,2.82,Wednesday
+82315,Spanish Soundview SDA,40.815052,-73.861258,4.54,6,2,1822 Lacombe Avenue,Bronx,2.27,Wednesday
+82210,Spanish SDA Church,40.824457,-73.899622,4.01,5,2,1038 Prospect Avenue,Bronx,2.0,Wednesday
+87233,Forest Hills Senior Center,40.73591,-73.850212,3.95,5,2,108-25 62nd Drive,Forest Hills,1.98,Wednesday
+81324,St. Stephen Outreach Inc.,40.695579,-73.947375,3.9,4,2,874 Myrtle Avenue,Brooklyn,1.95,Wednesday
+82976,Queensboro SDA Church,40.718217,-73.731704,3.86,5,2,96-50 222nd Street,Queens Village,1.93,Wednesday
+85494,Every Day is a Miracle - Harvest Hand Food Pantry,40.842975,-73.846291,3.83,4,1,2626 East Tremont Avenue,Bronx,3.83,Wednesday
+82261,Bushwick United Seniors Inc.,40.689389,-73.91793,3.78,4,2,1139 Bushwick Avenue,Brooklyn,1.89,Wednesday
+84221,Christian Cultural Center,40.651172,-73.889936,3.68,5,2,120-20 Flatlands Avenue,Brooklyn,1.84,Wednesday
+85328,Full Effect Gospel Ministries,40.668427,-73.8779,3.48,5,2,900 New Lots Ave,Brooklyn,1.74,Wednesday
+85537,Apna Food Pantry Brighton Beach,40.581594,-73.961703,3.46,4,2,225 Neptune Avenue,Brooklyn,1.73,Wednesday
+84151,Gethsemane SDA Church,40.663955,-73.950312,3.43,5,2,357 Empire Blvd.,Brooklyn,1.72,Wednesday
+85401,JHS 8 Q Richard S. Grossley,40.69719,-73.787192,3.4,4,1,108-35 167th Street,Jamaica,3.4,Wednesday
+82212,Bethel AME Church,40.811509,-73.940603,3.37,4,2,60 West 132nd  Street,New York,1.68,Wednesday
+85276,Children of the Light International Ministry Inc.,40.642131,-73.901835,3.08,4,2,1171 East 95th Street,Brooklyn,1.54,Wednesday
+85448,Vets Inc,40.668109,-73.756857,2.95,4,2,143-17 Springfield Blvd,Springfield Gardens,1.48,Wednesday
+80903,Jewish Community Council of the Rockaway Peninsula,40.605645,-73.751391,2.81,4,2,1525 Central Avenue,Far Rockaway,1.4,Wednesday
+85186,"Pathhseo, Inc.",40.831336,-73.891347,2.8,4,2,1357 Southern Blvd,Bronx,1.4,Wednesday
+85552,Olivet Gospel Church Community Food Distribution Program,40.889389,-73.831265,2.75,4,2,3900 Dyre Ave,Bronx,1.38,Wednesday
+84268,New Covenant Community Development Corp.,40.828841,-73.90312,2.72,3,2,1175 Boston Road,Bronx,1.36,Wednesday
+85255,Project Hope Charities,40.670977,-73.769835,2.58,3,2,170-20 140th Avenue,Jamaica,1.29,Wednesday
+80212,SCO Family of Services/Bethany House,40.699435,-73.926353,2.57,4,2,164 Suydam Street,Brooklyn,1.28,Wednesday
+84331,"SCAN-Harbor, Inc.",40.831059,-73.925337,2.54,4,2,40 E 164th St,Bronx,1.27,Wednesday
+85348,The Legacy Center Community Development Corp.,40.701741,-73.892395,2.47,3,2,71-02 Cypress Hills Street,Glendale,1.24,Wednesday
+84177,"Manna of Life Ministries, Inc.",40.82742,-73.904759,2.46,3,2,1101 Boston rd.,Bronx,1.23,Wednesday
+85387,New York Common Pantry,40.830888,-73.890495,2.46,3,1,1290 Hoe Avenue,Bronx,2.46,Wednesday
+84319,"Manna of Life Ministries, Inc.",40.82742,-73.904759,2.45,3,2,1101 Boston Rd.,Bronx,1.23,Wednesday
+85561,THE TEMPLE OF RESTORATION FOOD PANTRY,40.679036,-73.951343,2.42,4,2,18 Herkimer Place,Brooklyn,1.21,Wednesday
+82743,J.U.S.T.I.C.E. Organization,40.595639,-73.761226,2.34,3,2,223 Beach 28th Street,Far Rockaway,1.17,Wednesday
+82298,Primitive Christian Church,40.714244,-73.987905,2.31,3,2,207-209 East Broadway,New York,1.16,Wednesday
+85200,Masbia of Flatbush,40.624126,-73.965061,2.28,3,2,1372 Coney Island Ave,Brooklyn,1.14,Wednesday
+85162,Every Day is a Miracle co The Almond Tree Church,40.86185,-73.90176,2.27,3,2,2424 Jerome Ave,Bronx,1.14,Wednesday
+85170,Masbia of Flatbush,40.624126,-73.965061,2.26,3,2,1372 Coney Island Ave,Brooklyn,1.13,Wednesday
+85402,PS 19 Q Marino Jeantet,40.749381,-73.867354,2.08,3,2,40-10 99th St.,Corona,1.04,Wednesday
+84812,Full Gospel Assembly,40.66435,-73.956641,2.05,3,2,131 Sullivan Place,Brooklyn,1.02,Wednesday
+85167,ICNA Relief USA,40.704531,-73.811813,1.88,2,1,87-91 144th Street,Jamaica,1.88,Wednesday
+80996,CCNS-St. Michael's Church,40.758668,-73.829044,1.74,2,1,136-76 41st Avenue,Flushing,1.74,Wednesday
+85499,Mosholu Montefiore Community Center FP,40.881486,-73.881226,1.73,2,1,3450 Dekalb Avenue,Bronx,1.73,Wednesday
+84002,Church of God Inc.,40.660127,-73.926,1.71,2,2,1011 Winthrop Street,Brooklyn,0.86,Wednesday
+84504,Blessed Virgin Mary St. Mary's Winfield,40.738317,-73.893797,1.62,3,2,70-31 48th Avenue,Woodside,0.81,Wednesday
+83618,Shorefront Jewish Comm. Council,40.576348,-73.967318,1.61,2,2,128 Brighton Beach Avenue,Brooklyn,0.8,Wednesday
+85022,Taurus Associates,40.672149,-73.734466,1.52,2,2,240-08 135th Avenue,Rosedale,0.76,Wednesday
+85484,Pomonok Food Pantry,40.735033,-73.814726,1.47,2,2,67-09 Kissena Blvd.,Kew Gardens,0.74,Wednesday
+82278,New Haven SDA Church,40.674865,-73.955524,1.45,2,2,634 Prospect Place,Brooklyn,0.72,Wednesday
+80182,"United Bronx Parents, Inc.",40.813721,-73.903962,1.45,3,2,603 Prospect Avenue,Bronx,0.72,Wednesday
+81412,St. Stephen Outreach Community,40.695579,-73.947375,1.44,2,2,874 Myrtle Avenue,Brooklyn,0.72,Wednesday
+85606,GRANT HOUSE UNITY CORPORATION,40.619954,-73.934002,1.36,3,2,2046 FLATBUSH AVENUE,Brooklyn,0.68,Wednesday
+85396,HS 493 K Brooklyn Collegiate: A College Board Scho,40.674103,-73.913273,1.35,2,2,2021 Bergen Street,Brooklyn,0.68,Wednesday
+80065,Gethsemane Baptist Church,40.842956,-73.889532,1.26,2,2,771 Fairmount Place,Bronx,0.63,Wednesday
+80336,Calvary Pentecostal Church,40.654342,-73.961095,1.13,2,1,151 Woodruff Avenue,Brooklyn,1.13,Wednesday
+85398,Wadleigh Secondary School for the Performing,40.802207,-73.954142,1.11,2,2,215 WEST 114 STREET,New York,0.56,Wednesday
+80604,Holy Apostles Soup Kitchen,40.749416,-73.999188,1.09,2,2,296 9th Avenue,New York,0.55,Wednesday
+81685,Father's Heart Ministries,40.728014,-73.980741,0.99,2,2,543-545 East 11th Street,New York,0.5,Wednesday
+83503,Our Lady of Grace Parish Ministry,40.593604,-73.967036,0.9,2,2,2322 East 4th Street,Brooklyn,0.45,Wednesday
+81451,Grand Central Food Program,40.802813,-73.935822,0.88,2,2,210 East 124th Street,New York,0.44,Wednesday
+85649,The Lower Eastside Girls Club,40.723802,-73.976319,0.87,2,2,402 East 8th Street,New York,0.44,Wednesday
+84740,St. James Holiness Church,40.666876,-73.917814,0.86,2,2,89 Legion Street,Brooklyn,0.43,Wednesday
+85592,Hope For Humanity Inc.,40.866337,-73.921732,0.86,1,1,111- 113 Vermilyea Avenue,New York,0.86,Wednesday
+81319,United Bronx Parents,40.812801,-73.906944,0.84,2,2,787 E 149th Street,Bronx,0.42,Wednesday
+84081,Bethel AME Church,40.588749,-73.804391,0.82,2,2,215 Beach 77th  Street,Arverne,0.41,Wednesday
+81741,Esther Grunblat Center of Central Queens,40.728394,-73.846891,0.78,2,2,108-13 67th Road,Forest Hills,0.39,Wednesday
+81402,National Comm. For Furtherance of Jewish Ed.,40.669328,-73.940979,0.75,2,2,824 Eastern Parkway,Brooklyn,0.38,Wednesday
+83557,Father's Heart Ministries,40.728014,-73.980741,0.73,2,2,543-545 East 11th Street,New York,0.36,Wednesday
+80343,Our Lady of Grace Parish,40.593604,-73.967036,0.72,2,2,2322 East 4th Street,Brooklyn,0.36,Wednesday
+85257,Original Pentecostal Apostolic Church,40.641498,-73.939775,0.61,1,1,3901 Avenue D,Brooklyn,0.61,Wednesday
+84157,Harlem Dowling West Side Center,40.81014,-73.947461,0.59,2,2,2139 Adam Clayton Powell Jr Boulevard,New York,0.3,Wednesday
+85320,Christ Temple of the Apostolic Faith,40.808655,-73.941592,0.55,2,2,13 West 128th Street,New York,0.28,Wednesday
+85460,PS 142 M Amalia Castro,40.718383,-73.984452,0.55,2,2,100 Attorney Street,New York,0.28,Wednesday
+4031,Fortune Society,40.824301,-73.90945,0.48,1,1,502 E 163rd St,Bronx,0.48,Wednesday
+85765,"The Disciples of Galilee, Inc.",40.821616,-73.848646,0.4,2,2,725 Castle Hill Avenue,Bronx,0.2,Wednesday
+85582,PS 140 X,40.823289,-73.907948,0.4,1,1,916 Eagle Ave,Bronx,0.4,Wednesday
+84189,Community Services Housing Development Corp.,40.668898,-73.920053,0.38,1,1,547 Howard Avenue,Brooklyn,0.38,Wednesday
+80136,The Salvation Army Tremont Corps,40.852013,-73.895268,0.29,1,1,2121 Washington Avenue,Bronx,0.29,Wednesday
+87369,Project Renewal Holland House,40.757848,-73.991229,0.26,1,1,351 West 42nd Street,New York,0.26,Wednesday
+85583,Met Council Mobile Pantry,40.637943,-73.924857,0.26,1,1,5361 Preston Court,Brooklyn,0.26,Wednesday
+81139,Park Avenue Synagogue,40.781308,-73.9578,0.23,1,1,50 East 87th St.,New York,0.23,Wednesday
+81168,Jewish Comm Council of Canarsie,40.651533,-73.88538,0.21,1,1,1170 Pennsylvania Avenue,Brooklyn,0.21,Wednesday
+81595,Project Lead,40.70236,-73.82771,0.21,1,1,85-12 126th Street,Kew Gardens,0.21,Wednesday
+85086,Metropolitan Council on Jewish Poverty,40.637943,-73.924857,0.16,1,1,5361 Preston Court,Brooklyn,0.16,Wednesday
+83921,St. Margaret's Episcopal Church,40.816517,-73.90032,0.06,1,1,940 East 156th Street,Bronx,0.06,Wednesday
