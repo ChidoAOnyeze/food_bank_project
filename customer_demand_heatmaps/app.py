@@ -9,6 +9,7 @@ import base64
 from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 
+from validator import DataValidationError
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days, DAYS_ORDER
 from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS, METRIC_UNITS
 from statistics_reporter import compute_detailed_statistics, generate_distribution_figure, export_distribution_report_files
@@ -43,18 +44,34 @@ data_source = st.sidebar.radio(
 
 raw_df = None
 file_label = ""
+load_error = None
+
+# Pallet rounding method
+st.sidebar.markdown("---")
+st.sidebar.header("⚙️ Calculation & Display Settings")
+
+rounding_mode = st.sidebar.radio(
+    "Per-Order Pallet Rounding Method:",
+    ["Ceiling (math.ceil - Standard Logistics)", "Nearest Integer (round)"],
+    index=0
+)
+round_key = 'ceil' if 'Ceiling' in rounding_mode else 'round'
 
 if data_source == "Upload CSV File":
     uploaded_file = st.sidebar.file_uploader("Upload Orders CSV", type=["csv"])
     if uploaded_file is not None:
         file_label = uploaded_file.name
         file_bytes = uploaded_file.getvalue()
-        raw_df = load_and_preprocess_orders(io.BytesIO(file_bytes))
+        try:
+            raw_df = load_and_preprocess_orders(io.BytesIO(file_bytes), rounding_mode=round_key, raise_on_fatal=False)
+        except DataValidationError as e:
+            load_error = e
+        except Exception as e:
+            load_error = DataValidationError(f"Unexpected error while reading CSV: {str(e)}")
 else:
     sample_choice = st.sidebar.selectbox("Select Sample Dataset:", list(SAMPLE_FILES.keys()))
     sample_path = SAMPLE_FILES[sample_choice]
     
-    # Resolve relative path
     possible_paths = [
         sample_path,
         os.path.join("..", sample_path),
@@ -68,24 +85,46 @@ else:
 
     if resolved_path:
         file_label = sample_choice
-        raw_df = load_and_preprocess_orders(resolved_path)
+        try:
+            raw_df = load_and_preprocess_orders(resolved_path, rounding_mode=round_key, raise_on_fatal=False)
+        except DataValidationError as e:
+            load_error = e
     else:
         st.error(f"Sample file not found: {sample_path}")
+
+# Handle Fatal Load Errors
+if load_error is not None:
+    st.error(f"🚨 **Data Validation Error:** {load_error.message}")
+    if hasattr(load_error, 'issues') and load_error.issues:
+        st.markdown("#### 🔍 Problematic Locations in CSV:")
+        err_df = pd.DataFrame(load_error.issues)
+        st.dataframe(err_df, use_container_width=True)
+    st.stop()
 
 if raw_df is None:
     st.info("👆 Please upload a routing CSV file or select a sample dataset in the sidebar to begin.")
     st.stop()
 
-# --- CONFIGURATION CONTROLS ---
-st.sidebar.markdown("---")
-st.sidebar.header("⚙️ Calculation & Display Settings")
-
-rounding_mode = st.sidebar.radio(
-    "Per-Order Pallet Rounding Method:",
-    ["Ceiling (math.ceil - Standard Logistics)", "Nearest Integer (round)"],
-    index=0
-)
-round_key = 'ceil' if 'Ceiling' in rounding_mode else 'round'
+# --- DIAGNOSTICS & DATA QUALITY BANNER ---
+validation_issues = raw_df.attrs.get('validation_issues', [])
+if validation_issues:
+    with st.expander(f"⚠️ **Data Quality & Anomaly Report ({len(validation_issues)} issues detected & handled)**", expanded=False):
+        st.markdown("""
+        The validator detected malformed or missing values in your CSV. 
+        Invalid coordinate rows were skipped, and bad demand values were auto-corrected so clean data could still be visualized.
+        """)
+        issues_display = []
+        for iss in validation_issues:
+            issues_display.append({
+                'CSV Row #': iss.get('row_number'),
+                'Customer / ID': iss.get('customer'),
+                'Column': iss.get('column'),
+                'Cell Value': iss.get('value'),
+                'Issue Type': iss.get('issue_type'),
+                'Diagnostic Details': iss.get('description'),
+                'Severity': iss.get('severity', 'MEDIUM')
+            })
+        st.dataframe(pd.DataFrame(issues_display), use_container_width=True)
 
 with st.sidebar.expander("🎨 Heatmap Map Settings", expanded=False):
     radius = st.slider("Heat Radius", min_value=10, max_value=45, value=25, step=1)

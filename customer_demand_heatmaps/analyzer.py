@@ -1,8 +1,13 @@
+import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import re
 import math
 import pandas as pd
 import numpy as np
+
+from validator import inspect_and_diagnose_csv, DataValidationError
 
 DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -23,23 +28,23 @@ def extract_date_from_filename(filename):
         return f"{m1}/{d1}/{y1}"
     return None
 
-def load_and_preprocess_orders(file_source, rounding_mode='ceil'):
+def load_and_preprocess_orders(file_source, rounding_mode='ceil', raise_on_fatal=True):
     """
-    Loads order/routing CSV file, extracts customer locations, dates, day of week,
-    and computes order-level pallet demands.
+    Loads order/routing CSV file, performs comprehensive cell-level validation,
+    pinpoints and logs bad inputs with row numbers, and computes customer demands.
     
     rounding_mode: 'ceil' (math.ceil) or 'round' (round to nearest int).
     """
-    if isinstance(file_source, str):
-        if not os.path.exists(file_source):
-            raise FileNotFoundError(f"File not found: {file_source}")
-        df = pd.read_csv(file_source)
-        file_name = file_source
-    else:
-        df = pd.read_csv(file_source)
-        file_name = getattr(file_source, 'name', 'uploaded_file.csv')
+    file_name = file_source if isinstance(file_source, str) else getattr(file_source, 'name', 'uploaded_file.csv')
 
-    df.columns = [str(c).strip() for c in df.columns]
+    # 1. Run deep validation & diagnostics
+    is_valid, fatal_errors, row_issues, cleaned_df = inspect_and_diagnose_csv(file_source, raise_on_fatal=raise_on_fatal)
+
+    if not is_valid or cleaned_df is None:
+        err_msg = fatal_errors[0]['description'] if fatal_errors else "CSV Validation Failed."
+        raise DataValidationError(err_msg, fatal_errors)
+
+    df = cleaned_df.copy()
 
     # Detect Columns
     lat_col = find_column(df.columns, ['latitude', 'lat', 'y'])
@@ -50,13 +55,9 @@ def load_and_preprocess_orders(file_source, rounding_mode='ceil'):
     city_col = find_column(df.columns, ['city', 'borough', 'county'])
     date_col = find_column(df.columns, ['date', 'orderdate', 'shipment date', 'delivery date', 'order_date'])
 
-    if not lat_col or not lon_col:
-        raise ValueError(f"Could not find Latitude and Longitude columns in CSV. Available columns: {list(df.columns)}")
-
-    # Clean numeric coordinates
-    df[lat_col] = pd.to_numeric(df[lat_col], errors='coerce')
-    df[lon_col] = pd.to_numeric(df[lon_col], errors='coerce')
-    df = df.dropna(subset=[lat_col, lon_col])
+    # Convert coordinates to float
+    df['latitude'] = pd.to_numeric(df[lat_col], errors='coerce')
+    df['longitude'] = pd.to_numeric(df[lon_col], errors='coerce')
 
     # Date parsing
     if date_col and df[date_col].notna().any():
@@ -69,9 +70,7 @@ def load_and_preprocess_orders(file_source, rounding_mode='ceil'):
         else:
             df['parsed_date'] = pd.NaT
 
-    df['day_of_week'] = df['parsed_date'].dt.day_name()
-    # Default missing day of week to 'Unknown'
-    df['day_of_week'] = df['day_of_week'].fillna('Unknown')
+    df['day_of_week'] = df['parsed_date'].dt.day_name().fillna('Unknown')
 
     # Pallet demands
     food_p = find_column(df.columns, ['food pallets'])
@@ -113,37 +112,31 @@ def load_and_preprocess_orders(file_source, rounding_mode='ceil'):
         df['customer_name'] = df['customer_id']
 
     df['address_full'] = df[addr_col].fillna('') if addr_col else ''
-    if city_col:
-        df['city_borough'] = df[city_col].fillna('')
-    else:
-        df['city_borough'] = ''
+    df['city_borough'] = df[city_col].fillna('') if city_col else ''
 
-    df['latitude'] = df[lat_col]
-    df['longitude'] = df[lon_col]
+    # Attach diagnostic issues to DataFrame metadata
+    df.attrs['validation_issues'] = row_issues
+    df.attrs['fatal_errors'] = fatal_errors
 
     return df
 
 def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'):
     """
     Aggregates orders by customer location for a specific day of the week (or 'All Days').
-    
-    Computes for each customer:
-    1) total_pallets_unrounded: Total pallets consumed (unrounded float sum).
-    2) total_pallets_rounded: Total rounded pallets (sum of rounded order pallets).
-    3) pallets_per_order: Average pallets per order (total_unrounded / total_orders).
-    4) total_orders: Total count of orders received.
     """
     filtered_df = df.copy()
     if selected_day != 'All Days':
         filtered_df = filtered_df[filtered_df['day_of_week'] == selected_day]
 
     if filtered_df.empty:
-        return pd.DataFrame(columns=[
+        empty_df = pd.DataFrame(columns=[
             'customer_id', 'customer_name', 'latitude', 'longitude',
             'address', 'city_borough', 'day_of_week',
             'total_pallets_unrounded', 'total_pallets_rounded',
             'pallets_per_order', 'total_orders'
         ])
+        empty_df.attrs['validation_issues'] = df.attrs.get('validation_issues', [])
+        return empty_df
 
     grouped = filtered_df.groupby(['customer_id', 'customer_name', 'latitude', 'longitude']).agg(
         total_pallets_unrounded=('order_pallets', 'sum'),
@@ -160,6 +153,7 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
 
     # Sort descending by total unrounded pallets
     grouped = grouped.sort_values(by='total_pallets_unrounded', ascending=False).reset_index(drop=True)
+    grouped.attrs['validation_issues'] = df.attrs.get('validation_issues', [])
 
     return grouped
 
