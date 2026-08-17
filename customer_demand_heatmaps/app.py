@@ -323,7 +323,7 @@ with tab_stats:
         from statistics_reporter import generate_html_report
         temp_html_path = "temp_export_report.html"
         generate_html_report(all_cust_df, stats_df, chart_b64, temp_html_path, file_label)
-        with open(temp_html_path, "r") as f:
+        with open(temp_html_path, "r", encoding="utf-8") as f:
             html_data = f.read().encode('utf-8')
         if os.path.exists(temp_html_path):
             os.remove(temp_html_path)

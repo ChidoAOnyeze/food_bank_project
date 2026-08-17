@@ -70,7 +70,7 @@ def build_valhalla_matrix(locations, cache_file=None, fetch_missing=True):
     cache_file = cache_file or find_or_create_cache_file()
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, "r") as f:
+            with open(cache_file, "r", encoding="utf-8") as f:
                 cache = json.load(f)
         except Exception:
             cache = {}
@@ -103,7 +103,7 @@ def build_valhalla_matrix(locations, cache_file=None, fetch_missing=True):
                 fetch_valhalla_chunk(sources_chunk, targets_chunk, indices_i, indices_j, locations, cache)
 
         try:
-            with open(cache_file, "w") as f:
+            with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(cache, f)
         except Exception:
             pass
