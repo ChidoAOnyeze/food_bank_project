@@ -43,6 +43,30 @@ def detect_csv_delimiter(file_source):
     except Exception:
         return ','
 
+
+def read_csv_with_fallback(file_source, sep=','):
+    """
+    Attempts to read CSV with multiple encoding fallbacks (UTF-8, UTF-8-SIG, CP1252, Latin-1)
+    to prevent 'utf-8 codec can\'t decode byte 0xa0' errors from Excel or legacy exports.
+    """
+    encodings = ['utf-8-sig', 'utf-8', 'cp1252', 'latin-1', 'iso-8859-1']
+    last_err = None
+    for enc in encodings:
+        try:
+            if hasattr(file_source, 'seek'):
+                file_source.seek(0)
+            return pd.read_csv(file_source, sep=sep, dtype=str, encoding=enc)
+        except (UnicodeDecodeError, UnicodeError) as e:
+            last_err = e
+            continue
+        except Exception:
+            raise
+
+    # Fallback to replace invalid characters
+    if hasattr(file_source, 'seek'):
+        file_source.seek(0)
+    return pd.read_csv(file_source, sep=sep, dtype=str, encoding_errors='replace')
+
 def inspect_and_diagnose_csv(file_source, raise_on_fatal=True):
     """
     Performs deep structural and cell-level validation on a routing CSV.
@@ -64,9 +88,9 @@ def inspect_and_diagnose_csv(file_source, raise_on_fatal=True):
                 raise DataValidationError(f"File not found: {file_source}")
             if os.path.getsize(file_source) == 0:
                 raise DataValidationError(f"File is completely empty (0 bytes): {file_source}")
-            raw_df = pd.read_csv(file_source, sep=delim, dtype=str)
+            raw_df = read_csv_with_fallback(file_source, sep=delim)
         else:
-            raw_df = pd.read_csv(file_source, sep=delim, dtype=str)
+            raw_df = read_csv_with_fallback(file_source, sep=delim)
     except DataValidationError:
         raise
     except Exception as e:

@@ -52,6 +52,16 @@ def extract_date_from_filename(filename):
         return f"{m1}/{d1}/{y1}"
     return "N/A"
 
+
+def read_csv_safe(file_path):
+    encodings = ['utf-8-sig', 'utf-8', 'cp1252', 'latin-1', 'iso-8859-1']
+    for enc in encodings:
+        try:
+            return pd.read_csv(file_path, encoding=enc)
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    return pd.read_csv(file_path, encoding_errors='replace')
+
 def load_route_instances(file_path, depot=None):
     """
     Intelligently parses any route CSV file into one or more RoutingInstance objects.
@@ -63,7 +73,7 @@ def load_route_instances(file_path, depot=None):
     depot = depot or DEFAULT_DEPOT
 
     # Read CSV
-    df = pd.read_csv(file_path)
+    df = read_csv_safe(file_path)
     df.columns = [str(c).strip() for c in df.columns]
 
     # Detect Lat/Lon columns
