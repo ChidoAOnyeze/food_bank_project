@@ -103,7 +103,7 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
             ax1_twin = ax1.twinx()
             bars2 = ax1_twin.bar(x_indices + width/2, day_stats['total_orders'], width, label='Order Count', color='#10b981', edgecolor='#059669')
 
-            ax1.set_title('📅 Total Pallet Demand & Order Volume by Day of Week', fontsize=12, fontweight='bold', pad=10)
+            ax1.set_title('Total Pallet Demand & Order Volume by Day of Week', fontsize=12, fontweight='bold', pad=10)
             ax1.set_xticks(x_indices)
             ax1.set_xticklabels(day_stats.index, rotation=15, fontsize=10)
             ax1.set_ylabel('Total Pallets', color='#2563eb', fontweight='bold')
@@ -132,7 +132,7 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
     ax2.axvline(p_mean, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {p_mean:.2f} plts')
     ax2.axvline(p_median, color=median_color, linestyle='-', linewidth=2, label=f'Median: {p_median:.2f} plts')
 
-    ax2.set_title(f'📦 Customer Total Pallet Consumption Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+    ax2.set_title(f'Customer Total Pallet Consumption Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
     ax2.set_xlabel('Total Pallets Consumed (Unrounded)', fontsize=10)
     ax2.set_ylabel('Number of Customers', fontsize=10)
     ax2.legend(loc='upper right', frameon=True, fontsize=9)
@@ -148,7 +148,7 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
     ax3.axvline(ppo_mean, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {ppo_mean:.2f} plts/ord')
     ax3.axvline(ppo_median, color=median_color, linestyle='-', linewidth=2, label=f'Median: {ppo_median:.2f} plts/ord')
 
-    ax3.set_title(f'📊 Average Pallets per Order Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+    ax3.set_title(f'Average Pallets per Order Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
     ax3.set_xlabel('Pallets per Order (Average Order Size)', fontsize=10)
     ax3.set_ylabel('Number of Customers', fontsize=10)
     ax3.legend(loc='upper right', frameon=True, fontsize=9)
@@ -165,7 +165,7 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
     ax4.set_yticklabels(names, fontsize=8)
     ax4.invert_yaxis() # Top customer on top
     ax4.set_xlabel('Total Pallets Consumed', fontsize=10)
-    ax4.set_title(f'🏆 Top 15 Customer Demand Ranking ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+    ax4.set_title(f'Top 15 Customer Demand Ranking ({selected_day})', fontsize=12, fontweight='bold', pad=10)
     ax4.grid(axis='x', linestyle='--', alpha=0.3)
 
     for b in bars_top:
@@ -325,28 +325,28 @@ def generate_html_report(cust_df, stats_df, chart_base64, html_path, title):
 </head>
 <body>
     <div class="container">
-        <h1>📊 Customer Demand Distribution & Statistical Report</h1>
+        <h1>Customer Demand Distribution & Statistical Report</h1>
         <p style="color: #64748b;">Dataset: <strong>{title}</strong> | Active Customers: <strong>{len(cust_df)}</strong></p>
 
         <!-- KPI SUMMARY CARDS (MEANS & MEDIANS) -->
         <div class="kpi-grid">
             <div class="kpi-card" style="border-color: #3b82f6;">
-                <div class="kpi-title">📦 Total Pallets (Unrounded)</div>
+                <div class="kpi-title">Total Pallets (Unrounded)</div>
                 <div class="kpi-value">{get_metric_val('total_pallets_unrounded', 'Total Sum'):,.1f}</div>
                 <div class="kpi-sub">Mean: <strong>{get_metric_val('total_pallets_unrounded', 'Mean (Average)'):.2f}</strong> | Median: <strong>{get_metric_val('total_pallets_unrounded', 'Median (50%)'):.2f}</strong></div>
             </div>
             <div class="kpi-card" style="border-color: #10b981;">
-                <div class="kpi-title">📦 Total Pallets (Rounded)</div>
+                <div class="kpi-title">Total Pallets (Rounded)</div>
                 <div class="kpi-value">{int(get_metric_val('total_pallets_rounded', 'Total Sum')):,}</div>
                 <div class="kpi-sub">Mean: <strong>{get_metric_val('total_pallets_rounded', 'Mean (Average)'):.2f}</strong> | Median: <strong>{get_metric_val('total_pallets_rounded', 'Median (50%)'):.2f}</strong></div>
             </div>
             <div class="kpi-card" style="border-color: #8b5cf6;">
-                <div class="kpi-title">📊 Avg Pallets / Order</div>
+                <div class="kpi-title">Avg Pallets / Order</div>
                 <div class="kpi-value">{get_metric_val('pallets_per_order', 'Mean (Average)'):.2f}</div>
                 <div class="kpi-sub">Median: <strong>{get_metric_val('pallets_per_order', 'Median (50%)'):.2f}</strong> | Std Dev: <strong>{get_metric_val('pallets_per_order', 'Std Dev'):.2f}</strong></div>
             </div>
             <div class="kpi-card" style="border-color: #f59e0b;">
-                <div class="kpi-title">🚚 Total Orders Serviced</div>
+                <div class="kpi-title">Total Orders Serviced</div>
                 <div class="kpi-value">{int(get_metric_val('total_orders', 'Total Sum')):,}</div>
                 <div class="kpi-sub">Mean: <strong>{get_metric_val('total_orders', 'Mean (Average)'):.2f}</strong> | Median: <strong>{get_metric_val('total_orders', 'Median (50%)'):.2f}</strong></div>
             </div>
@@ -354,12 +354,12 @@ def generate_html_report(cust_df, stats_df, chart_base64, html_path, title):
 
         <!-- DISTRIBUTION CHARTS IMAGE -->
         <div class="chart-section">
-            <h2 style="font-size: 18px; color: #1e293b; margin-top: 0; text-align: left;">📈 Distribution Visualizations (Means, Medians & Day-of-Week)</h2>
+            <h2 style="font-size: 18px; color: #1e293b; margin-top: 0; text-align: left;">Distribution Visualizations (Means, Medians & Day-of-Week)</h2>
             <img src="data:image/png;base64,{chart_base64}" alt="Distribution Charts">
         </div>
 
         <!-- DETAILED STATISTICAL SUMMARY TABLE -->
-        <h2>📋 Detailed Statistical Metrics (Means, Medians, Quartiles)</h2>
+        <h2>Detailed Statistical Metrics (Means, Medians, Quartiles)</h2>
         <table>
             <thead>
                 <tr>

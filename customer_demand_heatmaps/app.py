@@ -16,7 +16,7 @@ from statistics_reporter import compute_detailed_statistics, generate_distributi
 
 st.set_page_config(
     page_title="Customer Demand & Order Analytics",
-    page_icon="🗺️",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -38,14 +38,14 @@ def get_cached_customer_summary(df, selected_day, rounding_mode):
 def get_cached_stats(cust_df):
     return compute_detailed_statistics(cust_df)
 
-st.title("🗺️ Customer Demand & Statistical Distribution Hub")
+st.title("Customer Demand & Statistical Distribution Hub")
 st.markdown("""
 Interactive analytics platform to visualize geographic demand heatmaps, evaluate pallet consumption, 
 and explore **means, medians, and distribution bar charts** across days of the week.
 """)
 
 # --- SIDEBAR: DATA INPUT & CONFIG ---
-st.sidebar.header("📁 Data Source")
+st.sidebar.header("Data Source")
 
 SAMPLE_FILES = {
     "6-Month Dataset (orders_6_months_synthetic.csv)": "customer_demand_heatmaps/orders_6_months_synthetic.csv",
@@ -65,7 +65,7 @@ load_error = None
 
 # Pallet rounding method
 st.sidebar.markdown("---")
-st.sidebar.header("⚙️ Calculation & Display Settings")
+st.sidebar.header("Calculation & Display Settings")
 
 rounding_mode = st.sidebar.radio(
     "Per-Order Pallet Rounding Method:",
@@ -111,21 +111,21 @@ else:
 
 # Handle Fatal Load Errors
 if load_error is not None:
-    st.error(f"🚨 **Data Validation Error:** {load_error.message}")
+    st.error(f"**Data Validation Error:** {load_error.message}")
     if hasattr(load_error, 'issues') and load_error.issues:
-        st.markdown("#### 🔍 Problematic Locations in CSV:")
+        st.markdown("#### Problematic Locations in CSV:")
         err_df = pd.DataFrame(load_error.issues)
         st.dataframe(err_df)
     st.stop()
 
 if raw_df is None:
-    st.info("👆 Please upload a routing CSV file or select a sample dataset in the sidebar to begin.")
+    st.info("Please upload a routing CSV file or select a sample dataset in the sidebar to begin.")
     st.stop()
 
 # --- DIAGNOSTICS & DATA QUALITY BANNER ---
 validation_issues = raw_df.attrs.get('validation_issues', [])
 if validation_issues:
-    with st.expander(f"⚠️ **Data Quality & Anomaly Report ({len(validation_issues)} issues detected & handled)**", expanded=False):
+    with st.expander(f"**Data Quality & Anomaly Report ({len(validation_issues)} issues detected & handled)**", expanded=False):
         st.markdown("""
         The validator detected malformed or missing values in your CSV. 
         Invalid coordinate rows were skipped, and bad demand values were auto-corrected so clean data could still be visualized.
@@ -143,7 +143,7 @@ if validation_issues:
             })
         st.dataframe(pd.DataFrame(issues_display))
 
-with st.sidebar.expander("🎨 Heatmap Map Settings", expanded=False):
+with st.sidebar.expander("Heatmap Map Settings", expanded=False):
     radius = st.slider("Heat Radius", min_value=10, max_value=45, value=25, step=1)
     blur = st.slider("Heat Blur", min_value=5, max_value=35, value=18, step=1)
     min_opacity = st.slider("Min Opacity", min_value=0.1, max_value=0.8, value=0.35, step=0.05)
@@ -155,20 +155,20 @@ available_days = get_available_days(raw_df)
 
 # Tabs
 tab_map, tab_stats = st.tabs([
-    "🗺️ Interactive Geographic Heatmaps",
-    "📊 Statistical Distributions & Charts (Means, Medians, Bar Charts)"
+    "Geographic Heatmaps",
+    "Statistical Distributions & Charts"
 ])
 
 # =========================================================================
 # TAB 1: INTERACTIVE HEATMAP
 # =========================================================================
 with tab_map:
-    st.markdown("### 🎛️ Heatmap Controls")
+    st.markdown("### Heatmap Controls")
 
     col_day, col_metric = st.columns([1.2, 1])
 
     with col_day:
-        st.markdown("**📅 Day of the Week Filter:**")
+        st.markdown("**Day of the Week Filter:**")
         selected_day = st.select_slider(
             "Slide to filter by day of week:",
             options=available_days,
@@ -178,7 +178,7 @@ with tab_map:
         )
 
     with col_metric:
-        st.markdown("**📊 Heatmap Display Metric:**")
+        st.markdown("**Heatmap Display Metric:**")
         metric_options = {
             'total_pallets_unrounded': '1. Total Pallets Consumed (Unrounded)',
             'total_pallets_rounded': '2. Total Rounded Pallets (Per-Order Rounded)',
@@ -205,17 +205,17 @@ with tab_map:
         active_custs = len(cust_summary)
         avg_ppo = (total_unrounded / total_orders) if total_orders > 0 else 0.0
 
-        st.markdown(f"#### 📈 Summary Overview for **{selected_day}**")
+        st.markdown(f"#### Summary Overview for **{selected_day}**")
         k1, k2, k3, k4, k5 = st.columns(5)
-        k1.metric("📦 Unrounded Pallets", f"{total_unrounded:,.2f}")
-        k2.metric("📦 Rounded Pallets", f"{total_rounded:,}")
-        k3.metric("🚚 Total Orders", f"{total_orders:,}")
-        k4.metric("🏢 Active Customers", f"{active_custs:,}")
-        k5.metric("📊 Avg Pallets / Order", f"{avg_ppo:.2f}")
+        k1.metric("Unrounded Pallets", f"{total_unrounded:,.2f}")
+        k2.metric("Rounded Pallets", f"{total_rounded:,}")
+        k3.metric("Total Orders", f"{total_orders:,}")
+        k4.metric("Active Customers", f"{active_custs:,}")
+        k5.metric("Avg Pallets / Order", f"{avg_ppo:.2f}")
 
         # Map display
         st.markdown("---")
-        st.subheader(f"📍 Geographic Heatmap: {METRIC_LABELS[selected_metric_key]} ({selected_day})")
+        st.subheader(f"Geographic Heatmap: {METRIC_LABELS[selected_metric_key]} ({selected_day})")
 
         heatmap_map = create_demand_heatmap_map(
             cust_summary,
@@ -238,7 +238,7 @@ with tab_map:
 
         # Customer Data Table & CSV Download
         st.markdown("---")
-        st.subheader(f"📋 Customer Demand Data ({selected_day})")
+        st.subheader(f"Customer Demand Data ({selected_day})")
 
         display_df = cust_summary[[
             'customer_name', 'customer_id', 'city_borough', 'address',
@@ -257,7 +257,7 @@ with tab_map:
         csv_buf = io.StringIO()
         display_df.to_csv(csv_buf, index=False)
         st.download_button(
-            label=f"📥 Download {selected_day} Customer CSV",
+            label=f"Download {selected_day} Customer CSV",
             data=csv_buf.getvalue().encode('utf-8'),
             file_name=f"customer_demand_{selected_day.lower().replace(' ', '_')}.csv",
             mime="text/csv",
@@ -268,7 +268,7 @@ with tab_map:
 # TAB 2: STATISTICAL DISTRIBUTIONS & BAR CHARTS (MEANS & MEDIANS)
 # =========================================================================
 with tab_stats:
-    st.markdown("### 📊 Comprehensive Statistical Distribution & Breakdown")
+    st.markdown("### Comprehensive Statistical Distribution & Breakdown")
     st.markdown("Descriptive statistics including **Means, Medians, Standard Deviations, Quartiles**, and visual distribution charts.")
 
     # Compute overall customer aggregation
@@ -283,27 +283,27 @@ with tab_stats:
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("**📦 Unrounded Pallets**")
+        st.markdown("**Unrounded Pallets**")
         st.metric("Mean (Average)", f"{p_unround.mean():.2f} plts")
         st.markdown(f"• **Median (50%):** `{p_unround.median():.2f} plts`  \n• **Std Dev:** `{p_unround.std():.2f}`  \n• **Total:** `{p_unround.sum():,.1f} plts`")
 
     with c2:
-        st.markdown("**📦 Rounded Pallets**")
+        st.markdown("**Rounded Pallets**")
         st.metric("Mean (Average)", f"{p_round.mean():.2f} plts")
         st.markdown(f"• **Median (50%):** `{p_round.median():.2f} plts`  \n• **Std Dev:** `{p_round.std():.2f}`  \n• **Total:** `{int(p_round.sum()):,} plts`")
 
     with c3:
-        st.markdown("**📊 Pallets per Order**")
+        st.markdown("**Pallets per Order**")
         st.metric("Mean (Average)", f"{ppo_s.mean():.2f} plts/ord")
         st.markdown(f"• **Median (50%):** `{ppo_s.median():.2f} plts/ord`  \n• **Std Dev:** `{ppo_s.std():.2f}`  \n• **IQR:** `{ppo_s.quantile(0.75) - ppo_s.quantile(0.25):.2f}`")
 
     with c4:
-        st.markdown("**🚚 Orders per Customer**")
+        st.markdown("**Orders per Customer**")
         st.metric("Mean (Average)", f"{ord_s.mean():.2f} orders")
         st.markdown(f"• **Median (50%):** `{ord_s.median():.2f} orders`  \n• **Std Dev:** `{ord_s.std():.2f}`  \n• **Total Orders:** `{int(ord_s.sum()):,}`")
 
     st.markdown("---")
-    st.subheader("📈 Distribution Bar Charts & Histograms")
+    st.subheader("Distribution Bar Charts & Histograms")
 
     # Render Matplotlib Figure
     dist_fig = generate_distribution_figure(all_cust_df, raw_df)
@@ -311,18 +311,18 @@ with tab_stats:
 
     # Detailed statistics table
     st.markdown("---")
-    st.subheader("📋 Descriptive Statistics Table (Means, Medians & Quantiles)")
+    st.subheader("Descriptive Statistics Table (Means, Medians & Quantiles)")
     st.dataframe(stats_df)
 
     # Export Buttons
-    st.markdown("#### 📥 Export Statistical Reports")
+    st.markdown("#### Export Statistical Reports")
     exp_col1, exp_col2, exp_col3 = st.columns(3)
 
     with exp_col1:
         stat_csv_buf = io.StringIO()
         stats_df.to_csv(stat_csv_buf, index=False)
         st.download_button(
-            label="📥 Download Statistical Summary CSV",
+            label="Download Statistical Summary CSV",
             data=stat_csv_buf.getvalue().encode('utf-8'),
             file_name=f"statistical_summary_{file_label.split('.')[0]}.csv",
             mime="text/csv",
@@ -333,7 +333,7 @@ with tab_stats:
         img_buf = io.BytesIO()
         dist_fig.savefig(img_buf, format='png', dpi=200, bbox_inches='tight')
         st.download_button(
-            label="🖼️ Download Distribution Charts (PNG)",
+            label="Download Distribution Charts (PNG)",
             data=img_buf.getvalue(),
             file_name=f"distribution_charts_{file_label.split('.')[0]}.png",
             mime="image/png"
@@ -352,7 +352,7 @@ with tab_stats:
             os.remove(temp_html_path)
 
         st.download_button(
-            label="🌐 Download Visual HTML Report",
+            label="Download Visual HTML Report",
             data=html_data,
             file_name=f"distribution_report_{file_label.split('.')[0]}.html",
             mime="text/html"

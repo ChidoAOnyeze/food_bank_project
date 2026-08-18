@@ -99,14 +99,14 @@ def create_demand_heatmap_map(
             popup_html = f"""
             <div style="font-family: Arial, sans-serif; font-size: 12px; width: 230px; line-height: 1.4;">
                 <div style="font-size: 14px; font-weight: bold; color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; margin-bottom: 6px;">
-                    🏢 {cust_name}
+                    {cust_name}
                 </div>
                 <div style="color: #64748b; margin-bottom: 6px; font-size: 11px;">
                     <strong>ID:</strong> {cust_id} {f"| {addr}, {city}" if addr else ""}
                 </div>
                 <div style="background-color: #f1f5f9; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">
                     <div style="color: #0f172a; font-weight: bold; margin-bottom: 2px;">
-                        📌 Selected: <span style="color: #2563eb;">{val} {unit_label}</span>
+                        Selected: <span style="color: #2563eb;">{val} {unit_label}</span>
                     </div>
                 </div>
                 <table style="width: 100%; font-size: 11px; margin-top: 4px;">

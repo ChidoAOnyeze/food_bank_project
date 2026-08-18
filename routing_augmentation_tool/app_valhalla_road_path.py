@@ -858,7 +858,7 @@ if uploaded_file is not None:
                     violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
             
             if violations:
-                st.warning("### 🚨 Capacity Violations Found in Initial Data:")
+                st.warning("### Capacity Violations Found in Initial Data:")
                 for v in violations:
                     st.write(f"- {v}")
                 st.info("Please adjust the capacities in the 'Trucks Configuration' table above, or modify your CSV route assignments so they fit.")
@@ -875,7 +875,7 @@ if uploaded_file is not None:
                     if load > capacity:
                         violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
                 if violations:
-                    st.warning("### ⚠️ Some trucks are still over capacity (Soft Constraint Active)")
+                    st.warning("### Warning: Some trucks are still over capacity (Soft Constraint Active)")
                     for v in violations:
                         st.write(f"- {v}")
 
@@ -953,7 +953,7 @@ if uploaded_file is not None:
                             tooltip="Depot (Start & End)",
                             popup="Depot (Start & End)",
                             icon=folium.DivIcon(
-                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);">★</div>''',
+                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);"></div>''',
                                 icon_size=(28, 28),
                                 icon_anchor=(14, 14)
                             )
@@ -990,7 +990,7 @@ if uploaded_file is not None:
                         popup=f"Original Route {route_idx} ({truck_names[route_idx]})"
                     )
                     pl.add_to(m)
-                    PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.8', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
+                    PolyLineTextPath(pl, '        >        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.8', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
 
                 # Plot All Improved Routes (if toggled, Dotted, Real Road Paths)
                 if show_proposed:
@@ -1010,7 +1010,7 @@ if uploaded_file is not None:
                             popup=f"Improved Route {route_idx} ({truck_names[route_idx]})"
                         )
                         pl.add_to(m)
-                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.9', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
+                        PolyLineTextPath(pl, '        >        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.9', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
             else:
                 # User selected a specific local move
                 move_idx = int(selected_option.split(" ")[1]) - 1
@@ -1044,18 +1044,18 @@ if uploaded_file is not None:
                 local_colors = {idx: highlight_colors[i % len(highlight_colors)] for i, idx in enumerate(changed_route_indices)}
 
                 # Display Visual Breadcrumb & Diff Summary Cards
-                st.markdown("#### 🔄 Route Improvement Sequence Comparison")
+                st.markdown("#### Route Improvement Sequence Comparison")
                 for idx in changed_route_indices:
                     t_name = truck_names[idx]
                     r_orig = initial_routes[idx]
                     r_new = selected_new_routes[idx]
                     r_color = local_colors[idx]
                     
-                    orig_names = ["🏠 Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_orig)] + ["🏠 Depot"]
-                    new_names = ["🏠 Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_new)] + ["🏠 Depot"]
+                    orig_names = ["Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_orig)] + ["Depot"]
+                    new_names = ["Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_new)] + ["Depot"]
                     
-                    orig_str = " ➔ ".join(orig_names)
-                    new_str = " ➔ ".join(new_names)
+                    orig_str = " -> ".join(orig_names)
+                    new_str = " -> ".join(new_names)
                     
                     orig_pallets = sum(demands[n] for n in r_orig)
                     new_pallets = sum(demands[n] for n in r_new)
@@ -1063,9 +1063,9 @@ if uploaded_file is not None:
                     st.markdown(f'''
                     <div style="border-left: 5px solid {r_color}; padding: 8px 12px; margin-bottom: 10px; background-color: #f8fafc; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <div style="font-size: 15px; font-weight: bold; color: {r_color}; margin-bottom: 4px;">
-                            🚚 Truck {t_name}
+                            Truck {t_name}
                             <span style="font-size: 12px; font-weight: normal; color: #64748b; margin-left: 8px;">
-                                Load: {orig_pallets}p ➔ <strong>{new_pallets}p</strong> | Stops: {len(r_orig)} ➔ <strong>{len(r_new)}</strong>
+                                Load: {orig_pallets}p -> <strong>{new_pallets}p</strong> | Stops: {len(r_orig)} -> <strong>{len(r_new)}</strong>
                             </span>
                         </div>
                         <div style="font-size: 13px; color: #334155; line-height: 1.5;">
@@ -1102,7 +1102,7 @@ if uploaded_file is not None:
                             tooltip="Depot (Start & End)",
                             popup="Depot (Start & End)",
                             icon=folium.DivIcon(
-                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);">★</div>''',
+                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);"></div>''',
                                 icon_size=(28, 28),
                                 icon_anchor=(14, 14)
                             )
@@ -1117,14 +1117,14 @@ if uploaded_file is not None:
                         
                         if orig_rt is not None and new_rt is not None and orig_rt != new_rt:
                             # Transferred between trucks
-                            badge_text = f"#{orig_seq}➔#{new_seq}"
-                            tooltip_text = f"🔄 {node_names[idx]} | Transferred: Truck {truck_names[orig_rt]} (Stop #{orig_seq}) ➔ Truck {truck_names[new_rt]} (Stop #{new_seq}) | Pallets: {demand}"
+                            badge_text = f"#{orig_seq}->#{new_seq}"
+                            tooltip_text = f"{node_names[idx]} | Transferred: Truck {truck_names[orig_rt]} (Stop #{orig_seq}) -> Truck {truck_names[new_rt]} (Stop #{new_seq}) | Pallets: {demand}"
                             html = f'''<div style="background-color: {bg_color}; color: white; border: 2px solid #f59e0b; border-radius: 12px; padding: 0 5px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); white-space: nowrap;">{badge_text}</div>'''
                             icon = folium.DivIcon(html=html, icon_size=(54, 24), icon_anchor=(27, 12))
                         elif orig_seq is not None and new_seq is not None and orig_seq != new_seq:
                             # Re-sequenced / Inverted / Reversed on same truck
-                            badge_text = f"#{orig_seq}➔#{new_seq}"
-                            tooltip_text = f"🔄 {node_names[idx]} | Position Changed: Stop #{orig_seq} ➔ Stop #{new_seq} on Truck {truck_names[target_rt]} | Pallets: {demand}"
+                            badge_text = f"#{orig_seq}->#{new_seq}"
+                            tooltip_text = f"{node_names[idx]} | Position Changed: Stop #{orig_seq} -> Stop #{new_seq} on Truck {truck_names[target_rt]} | Pallets: {demand}"
                             html = f'''<div style="background-color: {bg_color}; color: white; border: 2px solid #f59e0b; border-radius: 12px; padding: 0 5px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); white-space: nowrap;">{badge_text}</div>'''
                             icon = folium.DivIcon(html=html, icon_size=(54, 24), icon_anchor=(27, 12))
                         else:
@@ -1154,10 +1154,10 @@ if uploaded_file is not None:
                             color='#94a3b8',
                             weight=3,
                             opacity=0.4,
-                            tooltip=f"Unchanged: {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                            tooltip=f"Unchanged: {node_names[u]} -> {node_names[v]} (Truck {t_name})"
                         )
                         pl.add_to(m)
-                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=5, attributes={'fill': '#94a3b8', 'fill-opacity': '0.4', 'font-weight': 'bold', 'font-size': '12'}).add_to(m)
+                        PolyLineTextPath(pl, '        >        ', repeat=True, offset=5, attributes={'fill': '#94a3b8', 'fill-opacity': '0.4', 'font-weight': 'bold', 'font-size': '12'}).add_to(m)
                     
                     # 2. Removed Legs: Solid line in route's color (opacity 0.45)
                     for u, v in legs_removed:
@@ -1167,10 +1167,10 @@ if uploaded_file is not None:
                             color=r_color,
                             weight=5,
                             opacity=0.45,
-                            tooltip=f"Original (Cut): {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                            tooltip=f"Original (Cut): {node_names[u]} -> {node_names[v]} (Truck {t_name})"
                         )
                         pl.add_to(m)
-                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=6, attributes={'fill': r_color, 'fill-opacity': '0.45', 'font-weight': 'bold', 'font-size': '15'}).add_to(m)
+                        PolyLineTextPath(pl, '        >        ', repeat=True, offset=6, attributes={'fill': r_color, 'fill-opacity': '0.45', 'font-weight': 'bold', 'font-size': '15'}).add_to(m)
 
                     # 3. Added Improved Legs: Thick Dotted line with bold directional arrows in route's color
                     for u, v in legs_added:
@@ -1181,10 +1181,10 @@ if uploaded_file is not None:
                             weight=6,
                             opacity=1.0,
                             dash_array='6, 8',
-                            tooltip=f"Improved (New): {node_names[u]} ➔ {node_names[v]} (Truck {t_name})"
+                            tooltip=f"Improved (New): {node_names[u]} -> {node_names[v]} (Truck {t_name})"
                         )
                         pl.add_to(m)
-                        PolyLineTextPath(pl, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
+                        PolyLineTextPath(pl, '        >        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
             st_folium(m, width=900, height=600, returned_objects=[])
             

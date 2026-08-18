@@ -414,7 +414,7 @@ if uploaded_file is not None:
                     violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
             
             if violations:
-                st.warning("### 🚨 Capacity Violations Found in Initial Data:")
+                st.warning("### Capacity Violations Found in Initial Data:")
                 for v in violations:
                     st.write(f"- {v}")
                 st.info("Please adjust the capacities in the 'Trucks Configuration' table above, or modify your CSV route assignments so they fit.")
@@ -431,7 +431,7 @@ if uploaded_file is not None:
                     if load > capacity:
                         violations.append(f"**{truck_name}**: Load = {load} pallets, Capacity = {capacity} pallets (Over by {load - capacity})")
                 if violations:
-                    st.warning("### ⚠️ Some trucks are still over capacity (Soft Constraint Active)")
+                    st.warning("### Warning: Some trucks are still over capacity (Soft Constraint Active)")
                     for v in violations:
                         st.write(f"- {v}")
 
@@ -594,7 +594,7 @@ if uploaded_file is not None:
                         route_coords_orig = [locations[0]] + [locations[n] for n in r_orig] + [locations[0]]
                         pl_orig = folium.PolyLine(route_coords_orig, color=r_color, weight=6, opacity=0.3, tooltip=f"Original Route {truck_names[idx]}", popup=f"Original Route {truck_names[idx]}")
                         pl_orig.add_to(m)
-                        PolyLineTextPath(pl_orig, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '0.3', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
+                        PolyLineTextPath(pl_orig, '        >        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '0.3', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
                     
                     # Dotted new
                     r_new = selected_new_routes[idx]
@@ -602,7 +602,7 @@ if uploaded_file is not None:
                         route_coords_new = [locations[0]] + [locations[n] for n in r_new] + [locations[0]]
                         pl_new = folium.PolyLine(route_coords_new, color=r_color, weight=5, opacity=1.0, dash_array='5, 10', tooltip=f"Improved Route {truck_names[idx]}", popup=f"Improved Route {truck_names[idx]}")
                         pl_new.add_to(m)
-                        PolyLineTextPath(pl_new, '        ►        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
+                        PolyLineTextPath(pl_new, '        >        ', repeat=True, offset=7, attributes={'fill': r_color, 'fill-opacity': '1.0', 'font-weight': 'bold', 'font-size': '18'}).add_to(m)
 
 
             st_folium(m, width=900, height=600)
