@@ -58,7 +58,10 @@ def tour_partitioning_mtsp(depot, locations, n_trucks, dist_fn=None):
        and return directly to the depot.
     """
     if dist_fn is None:
-        from ..metrics import get_distance_fn
+        try:
+            from ..metrics import get_distance_fn
+        except (ImportError, ValueError):
+            from metrics import get_distance_fn
         dist_fn = get_distance_fn('geodesic')
 
     if not locations or n_trucks <= 0:

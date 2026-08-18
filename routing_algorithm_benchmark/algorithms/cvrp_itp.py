@@ -1,5 +1,8 @@
 import math
-from .min_max_mtsp import get_tsp_2_approx
+try:
+    from .min_max_mtsp import get_tsp_2_approx
+except (ImportError, ValueError):
+    from algorithms.min_max_mtsp import get_tsp_2_approx
 
 def partition_tour_by_capacity(tour_locations, demands_dict, max_capacity):
     """
@@ -31,7 +34,10 @@ def cvrp_itp(depot, locations, demands, n_trucks, dist_fn=None, max_capacity=Non
     Theoretical Guarantee: 2.5-approximation ratio for CVRP.
     """
     if dist_fn is None:
-        from ..metrics import get_distance_fn
+        try:
+            from ..metrics import get_distance_fn
+        except (ImportError, ValueError):
+            from metrics import get_distance_fn
         dist_fn = get_distance_fn('geodesic')
 
     if not locations or n_trucks <= 0:

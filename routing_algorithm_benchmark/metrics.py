@@ -1,7 +1,10 @@
 import math
 import statistics
 from geopy.distance import geodesic
-from .valhalla_matrix import build_valhalla_matrix
+try:
+    from .valhalla_matrix import build_valhalla_matrix
+except (ImportError, ValueError):
+    from valhalla_matrix import build_valhalla_matrix
 
 def haversine_km(p1, p2):
     """

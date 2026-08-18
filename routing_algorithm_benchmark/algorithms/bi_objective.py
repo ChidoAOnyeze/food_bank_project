@@ -64,7 +64,10 @@ def bi_objective_routing(depot, locations, n_trucks, dist_fn=None):
     3. Partition the resulting sequence across n_trucks.
     """
     if dist_fn is None:
-        from ..metrics import get_distance_fn
+        try:
+            from ..metrics import get_distance_fn
+        except (ImportError, ValueError):
+            from metrics import get_distance_fn
         dist_fn = get_distance_fn('geodesic')
 
     if not locations or n_trucks <= 0:

@@ -3,13 +3,26 @@ import os
 import sys
 import pandas as pd
 
-from .loader import load_route_instances, DEFAULT_DEPOT
-from .metrics import get_distance_fn, create_instance_distance_matrix, evaluate_routes
-from .algorithms.min_max_mtsp import tour_partitioning_mtsp
-from .algorithms.cvrp_itp import cvrp_itp
-from .algorithms.mlp_geometric import mlp_geometric_scaling
-from .algorithms.bi_objective import bi_objective_routing
-from .algorithms.ortools_solver import ortools_routing
+pkg_dir = os.path.dirname(os.path.abspath(__file__))
+if pkg_dir not in sys.path:
+    sys.path.insert(0, pkg_dir)
+
+try:
+    from .loader import load_route_instances, DEFAULT_DEPOT
+    from .metrics import get_distance_fn, create_instance_distance_matrix, evaluate_routes
+    from .algorithms.min_max_mtsp import tour_partitioning_mtsp
+    from .algorithms.cvrp_itp import cvrp_itp
+    from .algorithms.mlp_geometric import mlp_geometric_scaling
+    from .algorithms.bi_objective import bi_objective_routing
+    from .algorithms.ortools_solver import ortools_routing
+except (ImportError, ValueError):
+    from loader import load_route_instances, DEFAULT_DEPOT
+    from metrics import get_distance_fn, create_instance_distance_matrix, evaluate_routes
+    from algorithms.min_max_mtsp import tour_partitioning_mtsp
+    from algorithms.cvrp_itp import cvrp_itp
+    from algorithms.mlp_geometric import mlp_geometric_scaling
+    from algorithms.bi_objective import bi_objective_routing
+    from algorithms.ortools_solver import ortools_routing
 
 def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', include_ortools=True):
     """
@@ -147,16 +160,62 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
     print(f"  Benchmark Summary Results saved to: {output_csv}")
     print(f"=======================================================\n")
 
-    # Display clean table
+    # Display detailed table (show first/last rows if large)
     display_cols = [
         'Instance', 'Date', 'Algorithm', f'Total Distance ({unit_label})',
         f'Makespan ({unit_label})', f'Total Latency ({unit_label}-stops)',
         'Dist Imprv (%)', 'Makespan Imprv (%)', 'Latency Imprv (%)'
     ]
-    try:
-        print(df_summary[display_cols].to_markdown(index=False))
-    except Exception:
-        print(df_summary[display_cols].to_string(index=False))
+    
+    num_dates = df_summary['Date'].nunique()
+    if num_dates <= 5:
+        try:
+            print(df_summary[display_cols].to_markdown(index=False))
+        except Exception:
+            print(df_summary[display_cols].to_string(index=False))
+    else:
+        print(f"Showing sample of {len(df_summary)} instance rows (full day-by-day table saved to {output_csv}):")
+        try:
+            print(pd.concat([df_summary[display_cols].head(12), df_summary[display_cols].tail(12)]).to_markdown(index=False))
+        except Exception:
+            print(pd.concat([df_summary[display_cols].head(12), df_summary[display_cols].tail(12)]).to_string(index=False))
+
+    # Compute and display Cross-Date Aggregated Summary if multiple dates
+    if num_dates > 1:
+        agg_df = df_summary.groupby('Algorithm').agg(
+            Avg_Distance=(f'Total Distance ({unit_label})', 'mean'),
+            Avg_Makespan=(f'Makespan ({unit_label})', 'mean'),
+            Avg_Latency=(f'Total Latency ({unit_label}-stops)', 'mean'),
+            Mean_Dist_Improvement_Pct=('Dist Imprv (%)', 'mean'),
+            Mean_Makespan_Improvement_Pct=('Makespan Imprv (%)', 'mean'),
+            Mean_Latency_Improvement_Pct=('Latency Imprv (%)', 'mean'),
+            Days_Evaluated=('Date', 'count')
+        ).reset_index()
+
+        agg_df.columns = [
+            'Algorithm', f'Avg Distance ({unit_label})', f'Avg Makespan ({unit_label})',
+            f'Avg Latency ({unit_label}-stops)', 'Mean Dist Imprv (%)',
+            'Mean Makespan Imprv (%)', 'Mean Latency Imprv (%)', 'Delivery Days'
+        ]
+
+        # Round values for display
+        agg_display = agg_df.copy()
+        for col in [f'Avg Distance ({unit_label})', f'Avg Makespan ({unit_label})', f'Avg Latency ({unit_label}-stops)', 'Mean Dist Imprv (%)', 'Mean Makespan Imprv (%)', 'Mean Latency Imprv (%)']:
+            agg_display[col] = agg_display[col].round(2)
+
+        base_name = os.path.splitext(os.path.basename(input_file))[0]
+        agg_output_csv = f"benchmark_aggregated_{base_name}.csv"
+        agg_df.to_csv(agg_output_csv, index=False)
+
+        print("\n=======================================================")
+        print(f"  CROSS-DATE AGGREGATED BENCHMARK SUMMARY ({num_dates} Delivery Days)")
+        print(f"  Saved to: {agg_output_csv}")
+        print("=======================================================")
+        try:
+            print(agg_display.to_markdown(index=False))
+        except Exception:
+            print(agg_display.to_string(index=False))
+        print()
 
     return df_summary
 

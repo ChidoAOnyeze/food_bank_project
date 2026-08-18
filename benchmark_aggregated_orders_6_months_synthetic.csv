@@ -1,0 +1,7 @@
+Algorithm,Avg Distance (km),Avg Makespan (km),Avg Latency (km-stops),Mean Dist Imprv (%),Mean Makespan Imprv (%),Mean Latency Imprv (%),Delivery Days
+Bi-Objective (Makespan & Latency),726.63,96.7,413.07,-3.17,-0.7,6.34,127
+CVRP ITP (Iterated Partitioning),420.15,117.97,591.59,38.42,-22.94,-32.85,127
+MLP Geometric Scaling (Latency),733.13,95.87,410.11,-4.29,0.15,7.19,127
+Min-Max mTSP (Tour Partitioning),431.58,96.04,420.6,37.35,-0.07,5.11,127
+OR-Tools (Guided Local Search),290.18,84.47,627.78,57.33,11.6,-43.69,127
+Original / Realized Routes,701.87,95.96,446.17,0.0,0.0,0.0,127

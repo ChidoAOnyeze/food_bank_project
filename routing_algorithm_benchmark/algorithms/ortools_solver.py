@@ -8,7 +8,10 @@ def ortools_routing(depot, locations, demands, n_trucks, dist_fn=None, time_limi
     Solves Capacitated Vehicle Routing / mTSP to provide an operational baseline.
     """
     if dist_fn is None:
-        from ..metrics import get_distance_fn
+        try:
+            from ..metrics import get_distance_fn
+        except (ImportError, ValueError):
+            from metrics import get_distance_fn
         dist_fn = get_distance_fn('geodesic')
 
     if not locations or n_trucks <= 0:
