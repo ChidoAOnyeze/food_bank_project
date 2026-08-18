@@ -628,8 +628,11 @@ if uploaded_file is not None:
         
         if not needs_optimization:
             init_cost, all_top_moves, final_cost, improved_routes = st.session_state['optimization_results']
-            rejected_set = st.session_state.get('rejected_moves', set())
-            top_moves = [m for m in all_top_moves if m[2] not in rejected_set][:5]
+            if all_top_moves:
+                rejected_set = st.session_state.get('rejected_moves', set())
+                top_moves = [m for m in all_top_moves if m[2] not in rejected_set][:5]
+            else:
+                top_moves = []
 
 
 

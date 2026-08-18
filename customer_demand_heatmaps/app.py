@@ -21,6 +21,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- CACHED HELPER FUNCTIONS FOR INSTANT DAY SWITCHING ---
+@st.cache_data(show_spinner="Loading and validating orders dataset...", ttl=3600)
+def get_cached_orders_from_bytes(file_bytes, file_name, rounding_mode):
+    return load_and_preprocess_orders(io.BytesIO(file_bytes), rounding_mode=rounding_mode, raise_on_fatal=False)
+
+@st.cache_data(show_spinner="Loading and validating orders dataset...", ttl=3600)
+def get_cached_orders_from_path(file_path, rounding_mode):
+    return load_and_preprocess_orders(file_path, rounding_mode=rounding_mode, raise_on_fatal=False)
+
+@st.cache_data(show_spinner=False)
+def get_cached_customer_summary(df, selected_day, rounding_mode):
+    return aggregate_customer_demands(df, selected_day=selected_day, rounding_mode=rounding_mode)
+
+@st.cache_data(show_spinner=False)
+def get_cached_stats(cust_df):
+    return compute_detailed_statistics(cust_df)
+
 st.title("🗺️ Customer Demand & Statistical Distribution Hub")
 st.markdown("""
 Interactive analytics platform to visualize geographic demand heatmaps, evaluate pallet consumption, 
@@ -63,7 +80,7 @@ if data_source == "Upload CSV File":
         file_label = uploaded_file.name
         file_bytes = uploaded_file.getvalue()
         try:
-            raw_df = load_and_preprocess_orders(io.BytesIO(file_bytes), rounding_mode=round_key, raise_on_fatal=False)
+            raw_df = get_cached_orders_from_bytes(file_bytes, file_label, round_key)
         except DataValidationError as e:
             load_error = e
         except Exception as e:
@@ -86,7 +103,7 @@ else:
     if resolved_path:
         file_label = sample_choice
         try:
-            raw_df = load_and_preprocess_orders(resolved_path, rounding_mode=round_key, raise_on_fatal=False)
+            raw_df = get_cached_orders_from_path(resolved_path, round_key)
         except DataValidationError as e:
             load_error = e
     else:
@@ -98,7 +115,7 @@ if load_error is not None:
     if hasattr(load_error, 'issues') and load_error.issues:
         st.markdown("#### 🔍 Problematic Locations in CSV:")
         err_df = pd.DataFrame(load_error.issues)
-        st.dataframe(err_df, use_container_width=True)
+        st.dataframe(err_df)
     st.stop()
 
 if raw_df is None:
@@ -124,7 +141,7 @@ if validation_issues:
                 'Diagnostic Details': iss.get('description'),
                 'Severity': iss.get('severity', 'MEDIUM')
             })
-        st.dataframe(pd.DataFrame(issues_display), use_container_width=True)
+        st.dataframe(pd.DataFrame(issues_display))
 
 with st.sidebar.expander("🎨 Heatmap Map Settings", expanded=False):
     radius = st.slider("Heat Radius", min_value=10, max_value=45, value=25, step=1)
@@ -175,8 +192,8 @@ with tab_map:
             label_visibility="collapsed"
         )
 
-    # Aggregate customer demand
-    cust_summary = aggregate_customer_demands(raw_df, selected_day=selected_day, rounding_mode=round_key)
+    # Fast cached customer aggregation (Instant switch)
+    cust_summary = get_cached_customer_summary(raw_df, selected_day, round_key)
 
     if cust_summary.empty:
         st.warning(f"No delivery orders found for **{selected_day}** in this dataset.")
@@ -211,7 +228,13 @@ with tab_map:
             tiles=map_tiles
         )
 
-        st_folium(heatmap_map, width="100%", height=580)
+        st_folium(
+            heatmap_map,
+            width="100%",
+            height=580,
+            returned_objects=[],
+            key=f"heatmap_{file_label}_{selected_day}_{selected_metric_key}_{round_key}_{radius}_{blur}"
+        )
 
         # Customer Data Table & CSV Download
         st.markdown("---")
@@ -229,7 +252,7 @@ with tab_map:
             'Pallets / Order', 'Total Orders', 'Latitude', 'Longitude'
         ]
 
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df)
 
         csv_buf = io.StringIO()
         display_df.to_csv(csv_buf, index=False)
@@ -249,8 +272,8 @@ with tab_stats:
     st.markdown("Descriptive statistics including **Means, Medians, Standard Deviations, Quartiles**, and visual distribution charts.")
 
     # Compute overall customer aggregation
-    all_cust_df = aggregate_customer_demands(raw_df, selected_day='All Days', rounding_mode=round_key)
-    stats_df = compute_detailed_statistics(all_cust_df)
+    all_cust_df = get_cached_customer_summary(raw_df, 'All Days', round_key)
+    stats_df = get_cached_stats(all_cust_df)
 
     # KPI summary for overall dataset
     p_unround = all_cust_df['total_pallets_unrounded']
@@ -289,7 +312,7 @@ with tab_stats:
     # Detailed statistics table
     st.markdown("---")
     st.subheader("📋 Descriptive Statistics Table (Means, Medians & Quantiles)")
-    st.dataframe(stats_df, use_container_width=True)
+    st.dataframe(stats_df)
 
     # Export Buttons
     st.markdown("#### 📥 Export Statistical Reports")
