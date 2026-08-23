@@ -458,7 +458,9 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
     if missing_legs:
         save_geom_cache()
 
-def get_road_path(p1, p2):
+def get_road_path(p1, p2, use_road_geometry=True):
+    if not use_road_geometry:
+        return [p1, p2]
     geom_cache = load_geom_cache()
     k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
     if k in geom_cache:
@@ -473,12 +475,14 @@ def get_road_path(p1, p2):
         
     return [p1, p2]
 
-def get_full_route_geometry(locations_list):
+def get_full_route_geometry(locations_list, use_road_geometry=True):
+    if not use_road_geometry or len(locations_list) < 2:
+        return locations_list
     full_path = []
     for i in range(len(locations_list) - 1):
         p1 = locations_list[i]
         p2 = locations_list[i+1]
-        leg_pts = get_road_path(p1, p2)
+        leg_pts = get_road_path(p1, p2, use_road_geometry=True)
         if full_path:
             full_path.extend(leg_pts[1:])
         else:
@@ -679,6 +683,13 @@ latency_ui = st.sidebar.slider("Latency Penalty (Prioritize Early Arrivals)", mi
 
 makespan_weight = makespan_ui * 10
 latency_weight = latency_ui * 10
+
+st.sidebar.header("Map Visualization")
+render_street_paths = st.sidebar.toggle(
+    "Render True Road Paths",
+    value=True,
+    help="Toggle ON to render turn-by-turn road curves and bridge navigation. Toggle OFF for fast straight-line spider routes between stops (app_valhalla mode)."
+)
 
 st.sidebar.header("Testing")
 test_mode = st.sidebar.toggle("Test Mode (Limit to 200 improvements)", value=False)
@@ -910,7 +921,8 @@ if uploaded_file is not None:
             # Launch background worker for top 30 moves once per run
             if 'background_prefetch_params' not in st.session_state or st.session_state['background_prefetch_params'] != current_params:
                 st.session_state['background_prefetch_params'] = current_params
-                start_background_geometry_prefetch(top_moves, locations, limit=30)
+                if render_street_paths:
+                    start_background_geometry_prefetch(top_moves, locations, limit=30)
 
 
 
@@ -1048,7 +1060,7 @@ if uploaded_file is not None:
                     if not route:
                         continue
                     stop_sequence = [locations[0]] + [locations[n] for n in route] + [locations[0]]
-                    route_coords = get_full_route_geometry(stop_sequence)
+                    route_coords = get_full_route_geometry(stop_sequence, use_road_geometry=render_street_paths)
                     color = colors[route_idx % len(colors)]
                     pl = folium.PolyLine(
                         route_coords,
@@ -1067,7 +1079,7 @@ if uploaded_file is not None:
                         if not route:
                             continue
                         stop_sequence = [locations[0]] + [locations[n] for n in route] + [locations[0]]
-                        route_coords = get_full_route_geometry(stop_sequence)
+                        route_coords = get_full_route_geometry(stop_sequence, use_road_geometry=render_street_paths)
                         color = colors[route_idx % len(colors)]
                         pl = folium.PolyLine(
                             route_coords,
@@ -1134,7 +1146,8 @@ if uploaded_file is not None:
                         st.rerun()
                         
                 # Prefetch affected routes geometry in one batched call
-                prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
+                if render_street_paths:
+                    prefetch_and_cache_routes_geometry([initial_routes[i] for i in changed_route_indices] + [selected_new_routes[i] for i in changed_route_indices], locations)
                         
                 # Assign distinct bold base colors for each involved route
                 highlight_colors = ['#dc2626', '#2563eb', '#9333ea', '#ea580c', '#16a34a', '#0891b2']
@@ -1245,7 +1258,7 @@ if uploaded_file is not None:
                     
                     # 1. Unchanged Legs: Faint gray-tinted line
                     for u, v in legs_common:
-                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]], use_road_geometry=render_street_paths)
                         pl = folium.PolyLine(
                             leg_coords,
                             color='#94a3b8',
@@ -1258,7 +1271,7 @@ if uploaded_file is not None:
                     
                     # 2. Removed Legs: Solid line in route's color (opacity 0.45)
                     for u, v in legs_removed:
-                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]], use_road_geometry=render_street_paths)
                         pl = folium.PolyLine(
                             leg_coords,
                             color=r_color,
@@ -1271,7 +1284,7 @@ if uploaded_file is not None:
 
                     # 3. Added Improved Legs: Thick Dotted line with bold directional arrows in route's color
                     for u, v in legs_added:
-                        leg_coords = get_full_route_geometry([locations[u], locations[v]])
+                        leg_coords = get_full_route_geometry([locations[u], locations[v]], use_road_geometry=render_street_paths)
                         pl = folium.PolyLine(
                             leg_coords,
                             color=r_color,
