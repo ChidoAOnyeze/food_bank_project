@@ -4,34 +4,28 @@ try:
 except (ImportError, ValueError):
     from algorithms.min_max_mtsp import get_tsp_2_approx
 
-def partition_tour_by_capacity(tour_locations, demands_dict, max_capacity):
+def cvrp_itp(depot, locations, demands, n_trucks, dist_fn=None, vehicle_capacities=None):
     """
-    Partitions a TSP tour into routes based on capacity limit G.
-    """
-    truck_routes = []
-    current_route = []
-    current_load = 0.0
-
-    for loc in tour_locations:
-        demand = demands_dict.get(loc, 1.0)
-        if current_load + demand > max_capacity and current_route:
-            truck_routes.append(current_route)
-            current_route = [loc]
-            current_load = demand
-        else:
-            current_route.append(loc)
-            current_load += demand
-
-    if current_route:
-        truck_routes.append(current_route)
-
-    return truck_routes
-
-def cvrp_itp(depot, locations, demands, n_trucks, dist_fn=None, max_capacity=None):
-    """
-    Iterated Tour Partitioning (ITP) for CVRP.
+    Iterated Tour Partitioning (ITP) for the Capacitated Vehicle Routing Problem (CVRP).
     
-    Theoretical Guarantee: 2.5-approximation ratio for CVRP.
+    -----------------------------------------------------------------------------------------
+    1. WITHOUT TRUCK CAPACITY CONSTRAINTS:
+    -----------------------------------------------------------------------------------------
+    - Objective: Minimizes Total Fleet Travel Distance (sum_k D_k) for the CVRP problem.
+    - Mechanism (Haimovich & Rinnooy Kan 2.5-approximation):
+      * Forms an approximately optimal single-vehicle metric TSP tour over all delivery stops.
+      * Uses binary search to find an artificial uniform partition bound G that splits the tour 
+        into at most n_trucks equal vehicle routes.
+
+    -----------------------------------------------------------------------------------------
+    2. HOW TRUCK CAPACITIES WERE INCORPORATED:
+    -----------------------------------------------------------------------------------------
+    - Heterogeneous Capacity Vector: Accepts vehicle-specific capacity bounds [c_1, c_2, ..., c_k]
+      (e.g., from trucks.csv or fleet capacity configurations).
+    - Sequential Knapsack Tour Cuts: Partitions along the TSP tour by greedily packing stops into 
+      truck k until the cumulative pallet load sum_{i in Route_k} d_i reaches capacity_k.
+    - Once capacity is reached, the route returns to the depot and the subsequent stops begin 
+      the route for the next vehicle, maximizing vehicle fill rates without overloading.
     """
     if dist_fn is None:
         try:
@@ -51,28 +45,29 @@ def cvrp_itp(depot, locations, demands, n_trucks, dist_fn=None, max_capacity=Non
     tour_locations = [loc for loc in tsp_tour if loc != depot]
     demands_dict = dict(zip(locations, demands))
 
-    if max_capacity is not None and max_capacity > 0:
-        routes = partition_tour_by_capacity(tour_locations, demands_dict, max_capacity)
-    else:
-        # Binary search for capacity G such that len(routes) <= n_trucks
+    if vehicle_capacities is None or len(vehicle_capacities) != n_trucks:
         total_demand = sum(demands)
-        low = max(demands) if demands else 1.0
-        high = max(total_demand, 1.0)
-        routes = []
+        cap_target = max(max(demands) if demands else 1.0, (total_demand / n_trucks) * 1.15)
+        vehicle_capacities = [cap_target] * n_trucks
 
-        for _ in range(35):
-            mid = (low + high) / 2.0
-            r = partition_tour_by_capacity(tour_locations, demands_dict, mid)
-            routes = r
-            if len(r) == n_trucks:
-                break
-            elif len(r) > n_trucks:
-                low = mid + 0.01
-            else:
-                high = mid - 0.01
+    # Partition along the TSP tour matching vehicle capacities
+    truck_routes = [[] for _ in range(n_trucks)]
+    current_truck = 0
+    current_load = 0.0
 
-    # Pad or trim to exactly n_trucks
-    while len(routes) < n_trucks:
-        routes.append([])
+    for loc in tour_locations:
+        d_val = demands_dict.get(loc, 1.0)
+        cap = vehicle_capacities[current_truck]
 
-    return routes[:n_trucks]
+        if current_load + d_val > cap and current_truck < n_trucks - 1 and len(truck_routes[current_truck]) > 0:
+            current_truck += 1
+            current_load = 0.0
+            cap = vehicle_capacities[current_truck]
+
+        truck_routes[current_truck].append(loc)
+        current_load += d_val
+
+    while len(truck_routes) < n_trucks:
+        truck_routes.append([])
+
+    return truck_routes

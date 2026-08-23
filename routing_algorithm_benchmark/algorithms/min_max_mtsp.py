@@ -44,18 +44,32 @@ def get_tsp_2_approx(nodes, dist_fn):
     dfs(start)
     return tour
 
-def tour_partitioning_mtsp(depot, locations, n_trucks, dist_fn=None):
+def tour_partitioning_mtsp(depot, locations, n_trucks, dist_fn=None, demands=None, vehicle_capacities=None):
     """
-    Tour Partitioning Approximation Algorithm for Min-Max mTSP (Makespan Minimization).
+    Tour Partitioning Algorithm for Min-Max mTSP (Makespan & Capacity Optimization).
     
-    Theoretical Guarantee: 2.5-approximation ratio for metric min-max mTSP.
-    
-    Steps:
-    1. Form an approximately optimal TSP tour over Depot + all customer locations.
-    2. Compute the total perimeter length L of the tour.
-    3. Partition the tour into n_trucks segments of length ~ L / n_trucks.
-    4. Connect each truck from the depot to its assigned segment start, traverse the segment,
-       and return directly to the depot.
+    -----------------------------------------------------------------------------------------
+    1. WITHOUT TRUCK CAPACITY CONSTRAINTS:
+    -----------------------------------------------------------------------------------------
+    - Objective: Minimizes Makespan (max_k D_k), the driving distance of the single longest route.
+    - Mechanism (Frederickson et al. 2.5-approximation):
+      1. Builds a 2-approximation metric TSP tour over Depot + all customer stops using Prim's MST.
+      2. Computes the total perimeter length L of the global TSP tour.
+      3. Sets a target segment length per truck: L_target = L / n_trucks.
+      4. Partitions the tour into n_trucks equal continuous segments, connecting each truck from 
+         the depot to its assigned segment start, traversing the segment, and returning to the depot.
+
+    -----------------------------------------------------------------------------------------
+    2. HOW TRUCK CAPACITIES WERE INCORPORATED:
+    -----------------------------------------------------------------------------------------
+    - As the algorithm traces along the perimeter of the global TSP tour, it tracks both:
+        * current_length (cumulative distance)
+        * current_load (cumulative pallet demand)
+    - Capacitated Cut Boundary: For each customer stop with demand d_i:
+        * If adding d_i exceeds the assigned truck's capacity (current_load + d_i > capacity_k),
+          the route for truck k is immediately closed at the previous stop, and the remaining 
+          stops advance to the next available truck.
+        * If within capacity, the route continues until reaching L_target to maintain makespan balance.
     """
     if dist_fn is None:
         try:
@@ -67,11 +81,18 @@ def tour_partitioning_mtsp(depot, locations, n_trucks, dist_fn=None):
     if not locations or n_trucks <= 0:
         return [[] for _ in range(n_trucks)]
 
+    if demands is None or len(demands) != len(locations):
+        demands = [1.0] * len(locations)
+    demands_dict = dict(zip(locations, demands))
+
+    if vehicle_capacities is None or len(vehicle_capacities) != n_trucks:
+        avg_cap = max(max(demands) if demands else 1.0, (sum(demands) / n_trucks) * 1.35)
+        vehicle_capacities = [avg_cap] * n_trucks
+
     # 1. TSP tour over depot + locations
     all_nodes = [depot] + list(locations)
     tsp_tour = get_tsp_2_approx(all_nodes, dist_fn)
 
-    # Remove duplicates while preserving order
     clean_tour = []
     seen = set()
     for node in tsp_tour:
@@ -88,26 +109,36 @@ def tour_partitioning_mtsp(depot, locations, n_trucks, dist_fn=None):
 
     target_segment_length = total_length / n_trucks if n_trucks > 0 else total_length
 
-    # Partition tour among trucks
+    # Partition tour among trucks respecting both target distance and capacity
+    customer_nodes = [u for u in clean_tour if u != depot]
     truck_routes = [[] for _ in range(n_trucks)]
     current_truck = 0
     current_length = 0.0
+    current_load = 0.0
 
-    for i in range(len(clean_tour)):
-        u = clean_tour[i]
-        next_node = clean_tour[(i + 1) % len(clean_tour)]
+    for i, u in enumerate(customer_nodes):
+        d_val = demands_dict.get(u, 1.0)
+        cap = vehicle_capacities[current_truck]
+        next_node = customer_nodes[(i + 1) % len(customer_nodes)]
         step_dist = dist_fn(u, next_node)
 
-        if u != depot:
-            truck_routes[current_truck].append(u)
-
-        current_length += step_dist
-        if current_length >= target_segment_length and current_truck < n_trucks - 1:
+        # If adding this node exceeds capacity and we have another truck available, advance truck
+        if current_load + d_val > cap and current_truck < n_trucks - 1 and len(truck_routes[current_truck]) > 0:
             current_truck += 1
             current_length = 0.0
+            current_load = 0.0
+            cap = vehicle_capacities[current_truck]
 
-    # Ensure empty trucks get filled if there are remaining unassigned stops
-    # Pad to exactly n_trucks
+        truck_routes[current_truck].append(u)
+        current_load += d_val
+        current_length += step_dist
+
+        # If reached target length and within capacity, advance to next truck for makespan balance
+        if current_length >= target_segment_length and current_truck < n_trucks - 1 and i < len(customer_nodes) - 1:
+            current_truck += 1
+            current_length = 0.0
+            current_load = 0.0
+
     while len(truck_routes) < n_trucks:
         truck_routes.append([])
 

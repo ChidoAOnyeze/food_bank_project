@@ -4,8 +4,23 @@ from ortools.constraint_solver import pywrapcp
 
 def ortools_routing(depot, locations, demands, n_trucks, dist_fn=None, time_limit_seconds=3, vehicle_capacities=None, balance_makespan=True):
     """
-    State-of-the-Art Metaheuristic Baseline using Google OR-Tools Guided Local Search.
-    Solves Capacitated Vehicle Routing / mTSP to provide an operational baseline.
+    Google OR-Tools Guided Local Search Metaheuristic for Multi-Objective CVRP.
+    
+    -----------------------------------------------------------------------------------------
+    1. WITHOUT TRUCK CAPACITY CONSTRAINTS:
+    -----------------------------------------------------------------------------------------
+    - Objective: Solves Multi-Objective Vehicle Routing / mTSP for minimal distance and makespan balance.
+    - Mechanism: Sets arc costs to integer road meters, adds distance span dimension for makespan.
+
+    -----------------------------------------------------------------------------------------
+    2. HOW TRUCK CAPACITIES WERE INCORPORATED:
+    -----------------------------------------------------------------------------------------
+    - Exact Constraint Programming Dimension:
+      * Registers unary callback demand_callback(node) -> d_i.
+      * Adds dedicated Capacity dimension with vehicle-specific capacity bounds:
+          routing.AddDimensionWithVehicleCapacity(demand_callback, 0, vehicle_capacities, True, 'Capacity')
+      * Guided Local Search strictly restricts all neighborhood operators (2-opt, Relocate, Cross-exchange) 
+        to solutions that strictly satisfy vehicle pallet capacity limits.
     """
     if dist_fn is None:
         try:
@@ -50,7 +65,6 @@ def ortools_routing(depot, locations, demands, n_trucks, dist_fn=None, time_limi
     )
     distance_dimension = routing.GetDimensionOrDie('Distance')
     if balance_makespan and n_trucks > 1:
-        # Penalize difference between longest route and shortest route
         distance_dimension.SetGlobalSpanCostCoefficient(100)
 
     # Capacity dimension if demands are provided
@@ -64,7 +78,6 @@ def ortools_routing(depot, locations, demands, n_trucks, dist_fn=None, time_limi
         if vehicle_capacities:
             caps = [int(c * 100) for c in vehicle_capacities]
         else:
-            # Capacity balanced per truck
             total_scaled_demand = sum(all_demands)
             caps = [max(int((total_scaled_demand / n_trucks) * 1.5), 1000)] * n_trucks
 

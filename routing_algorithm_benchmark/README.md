@@ -1,82 +1,44 @@
 # Multi-Objective Routing Algorithm Benchmark Suite
 
-A modular, high-performance benchmarking framework that takes any customer routing dataset, executes classical approximation and metaheuristic algorithms, and outputs a comparative CSV analysis across multiple operational objectives.
+A modular, high-performance benchmarking framework that takes any customer routing dataset, executes classical approximation and metaheuristic algorithms, and outputs a comparative CSV analysis across multiple operational objectives (Distance, Makespan, Latency, and Vehicle Capacities).
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 Run the benchmark from the terminal against any CSV route file:
 
 ```bash
 # Run on standard delivery orders file
-python routing_algorithm_benchmark/run_benchmark.py -i routing_augmentation_tool/anon_routed_orders_5_28_26.csv
+python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv
+
+# Pass a custom trucks fleet capacity file (e.g. trucks.csv)
+python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv -t trucks.csv
 
 # Save results to a custom CSV file
-python routing_algorithm_benchmark/run_benchmark.py -i routing_comparison/routes_sample.csv -o comparison_summary.csv
-
-# Specify a custom depot latitude/longitude and distance metric
-python routing_algorithm_benchmark/run_benchmark.py \
-  -i routing_augmentation_tool/anon_routed_orders_5_28_26.csv \
-  --depot-lat 40.805948 \
-  --depot-lon -73.872999 \
-  --metric geodesic \
-  -o benchmark_results.csv
+python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv -o benchmark_results.csv
 ```
 
 ---
 
-## 📊 Evaluated Objectives
+## Algorithms Implemented & Capacity Integration
 
-For each algorithm and the original/actual route baseline, the benchmark calculates:
+### 1. Min-Max $k$-mTSP (`min_max_mtsp.py`)
+* **Without Capacity:** Minimizes Makespan (distance of longest route) via 2.5-approximation metric TSP perimeter partitioning ($L_{\text{target}} = L / k$).
+* **With Capacity:** Monitors cumulative pallet load along the tour perimeter and cuts route boundaries when either $L_{\text{target}}$ or $\text{capacity}_k$ is reached.
 
-1. **Total Distance ($km$):** Total distance traveled by all fleet vehicles combined ($\sum_{k} \text{dist}_k$).
-2. **Makespan ($km$):** Longest distance / return time of any single vehicle ($\max_k \text{dist}_k$).
-3. **Total Latency ($km \cdot \text{stops}$):** Cumulative sum of customer arrival times/distances ($\sum_{i} \text{arrival\_time}_i$).
-4. **Average Latency ($km$):** Mean customer wait distance per stop ($\frac{\text{Total Latency}}{N}$).
-5. **Max Load & Load StdDev:** Maximum demand on any truck and load balance across the fleet.
-6. **Improvement Percentages (%):** Percentage savings vs. original realized routes across Distance, Makespan, and Latency.
-7. **Competitive Ratios ($\frac{\text{Realized}}{\text{Algorithm}}$):** Standard operations research benchmark multiplier.
+### 2. CVRP ITP (`cvrp_itp.py`)
+* **Without Capacity:** Minimizes Total Distance via single-tour partitioning (Haimovich & Rinnooy Kan 2.5-approximation).
+* **With Capacity:** Binds exact vehicle capacity vectors $[c_1, c_2, \dots, c_k]$, packing vehicles along the metric tour until cumulative pallets reach capacity.
 
----
+### 3. MLP Geometric Scaling (`mlp_geometric.py`)
+* **Without Capacity:** Minimizes Cumulative Customer Arrival Latency via exponential ring doubling ($L_i = D \cdot 2^i$).
+* **With Capacity:** Traverses dense customer clusters in strict latency priority order, allocating stops to the earliest available truck with remaining capacity.
 
-## 🧠 Algorithms Implemented
+### 4. Bi-Objective Balancing (`bi_objective.py`)
+* **Without Capacity:** Explores Pareto trade-offs between Makespan and Latency via subtree weight-prioritized DFS traversal over the global MST.
+* **With Capacity:** Preserves subtree branch clustering while partitioning stops subject to hard truck pallet limits.
 
-| Algorithm | Focus Objective | Theoretical Framework |
-| :--- | :--- | :--- |
-| **Original / Realized Routes** | Baseline | Actual historical dispatcher route assignments |
-| **Min-Max mTSP (Tour Partitioning)** | Minimizes Makespan ($\max_k \text{dist}_k$) | 2.5-approximation via Metric TSP perimeter partitioning |
-| **CVRP ITP (Iterated Partitioning)** | Minimizes Total Distance with Capacity | 2.5-approximation via demand-accumulating TSP tour cuts |
-| **MLP Geometric Scaling** | Minimizes Total Customer Latency | Constant-factor approximation via geometric radius doubling ($L_i = D \cdot 2^i$) |
-| **Bi-Objective Routing** | Balances Makespan + Latency | (2.5, 8.49)-bicriteria approximation via weight-prioritized MST DFS |
-| **OR-Tools Metaheuristic** | Multi-Constraint Local Search | Google OR-Tools Guided Local Search with capacity & span penalties |
-
----
-
-## 📁 Package Structure
-
-```
-routing_algorithm_benchmark/
-├── algorithms/
-│   ├── __init__.py
-│   ├── min_max_mtsp.py      # Min-Max Multiple TSP (Tour Partitioning)
-│   ├── cvrp_itp.py          # Capacitated VRP (Iterated Tour Partitioning)
-│   ├── mlp_geometric.py     # Minimum Latency Problem (Geometric Scaling)
-│   ├── bi_objective.py      # Makespan + Latency (Weight-Ordered DFS Tree)
-│   └── ortools_solver.py    # Google OR-Tools Guided Local Search Solver
-├── loader.py                # Universal CSV route loader (single-day & multi-day)
-├── metrics.py               # Multi-objective metrics evaluator & DistanceMatrix
-├── benchmark_runner.py      # Core CLI benchmark runner
-├── run_benchmark.py         # Entry-point script
-└── README.md                # Documentation & usage guide
-```
-
----
-
-## 📄 Output CSV Summary Format
-
-The output CSV (e.g. `benchmark_summary_5_28_26.csv`) contains:
-
-```csv
-Instance,Algorithm,Total Stops,Trucks,Total Distance (km),Makespan (km),Total Latency (km-stops),Avg Latency (km),Max Load,Load StdDev,Dist Imprv (%),Makespan Imprv (%),Latency Imprv (%),Dist Ratio (Orig/Algo),Makespan Ratio (Orig/Algo),Latency Ratio (Orig/Algo)
-```
+### 5. Google OR-Tools Metaheuristic (`ortools_solver.py`)
+* **Without Capacity:** Solves integer mTSP for distance and span-cost balance.
+* **With Capacity:** Enforces `routing.AddDimensionWithVehicleCapacity` with Guided Local Search (GLS) neighborhood operators.

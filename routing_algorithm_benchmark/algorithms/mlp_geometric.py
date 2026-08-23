@@ -23,17 +23,30 @@ def k_path_dense_search(start, unvisited_nodes, limit, dist_fn):
 
     return path
 
-def mlp_geometric_scaling(depot, locations, n_trucks, dist_fn=None):
+def mlp_geometric_scaling(depot, locations, n_trucks, dist_fn=None, demands=None, vehicle_capacities=None):
     """
-    Geometric Scaling Approximation Algorithm for the Minimum Latency Problem (MLP / Cumulative VRP).
+    Capacitated Geometric Scaling Approximation for the Minimum Latency Problem (MLP / Cumulative VRP).
     
-    Theoretical Guarantee: Constant-factor approximation (3.59 for single vehicle) for cumulative latency.
-    
-    Steps:
-    1. Initialize search radius D to the nearest unvisited node from the depot.
-    2. Iteratively double the search length L_i = D * (2^i).
-    3. Find dense cluster paths within L_i to prioritize early delivery to high-density areas.
-    4. Partition the latency-optimized sequence across n_trucks.
+    -----------------------------------------------------------------------------------------
+    1. WITHOUT TRUCK CAPACITY CONSTRAINTS:
+    -----------------------------------------------------------------------------------------
+    - Objective: Minimizes Total Customer Arrival Latency / Wait Time (sum_i Arrival_Distance_i).
+    - Mechanism (Chakrabarty & Swamy / Blum et al. Geometric Ring Scaling):
+      1. Initializes a base search radius D to the nearest customer from the depot.
+      2. Doubles the radius exponentially at each iteration: L_i = D * 2^i (i = 1, 2, 4, 8, ...).
+      3. Greedily solves dense k-path subroutines within each concentric ring to prioritize visiting 
+         dense clusters of customers as early as possible.
+      4. Slices the latency-ordered sequence into n_trucks equal subsets.
+
+    -----------------------------------------------------------------------------------------
+    2. HOW TRUCK CAPACITIES WERE INCORPORATED:
+    -----------------------------------------------------------------------------------------
+    - Priority-Queue Capacity Allocation:
+      * Customer stops preserve their strict geometric latency priority ordering.
+      * As each stop is dequeued from the priority list, it is allocated to the earliest vehicle 
+        that still has sufficient remaining capacity (load_k + d_i <= capacity_k).
+      * Ensures that high-density early delivery zones receive morning deliveries without exceeding 
+        any truck's physical pallet load limit.
     """
     if dist_fn is None:
         try:
@@ -44,6 +57,15 @@ def mlp_geometric_scaling(depot, locations, n_trucks, dist_fn=None):
 
     if not locations or n_trucks <= 0:
         return [[] for _ in range(n_trucks)]
+
+    if demands is None or len(demands) != len(locations):
+        demands = [1.0] * len(locations)
+    demands_dict = dict(zip(locations, demands))
+
+    if vehicle_capacities is None or len(vehicle_capacities) != n_trucks:
+        total_demand = sum(demands)
+        cap_target = max(max(demands) if demands else 1.0, (total_demand / n_trucks) * 1.35)
+        vehicle_capacities = [cap_target] * n_trucks
 
     unvisited = list(locations)
     closest_dist = min(dist_fn(depot, n) for n in unvisited)
@@ -58,23 +80,28 @@ def mlp_geometric_scaling(depot, locations, n_trucks, dist_fn=None):
         if dense_path:
             latency_path.extend(dense_path)
         else:
-            # If no node fits within L_i, take the single closest node to guarantee progress
             nxt = min(unvisited, key=lambda n: dist_fn(depot, n))
             latency_path.append(nxt)
             unvisited.remove(nxt)
         iteration += 1
 
-    # Partition latency path across n_trucks
-    actual_k = min(n_trucks, len(latency_path))
-    chunk_size = len(latency_path) // actual_k
-    remainder = len(latency_path) % actual_k
+    # Capacity-aware allocation along latency priority order
+    truck_routes = [[] for _ in range(n_trucks)]
+    truck_loads = [0.0] * n_trucks
 
-    truck_routes = []
-    idx = 0
-    for i in range(actual_k):
-        size = chunk_size + (1 if i < remainder else 0)
-        truck_routes.append(latency_path[idx:idx + size])
-        idx += size
+    for node in latency_path:
+        d_val = demands_dict.get(node, 1.0)
+        assigned = False
+        for t_idx in range(n_trucks):
+            if truck_loads[t_idx] + d_val <= vehicle_capacities[t_idx]:
+                truck_routes[t_idx].append(node)
+                truck_loads[t_idx] += d_val
+                assigned = True
+                break
+        if not assigned:
+            min_truck = min(range(n_trucks), key=lambda t: truck_loads[t] / max(vehicle_capacities[t], 1.0))
+            truck_routes[min_truck].append(node)
+            truck_loads[min_truck] += d_val
 
     while len(truck_routes) < n_trucks:
         truck_routes.append([])

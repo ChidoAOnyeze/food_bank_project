@@ -1,3 +1,4 @@
+import math
 import csv
 import collections
 import os
@@ -10,7 +11,7 @@ class RoutingInstance:
     """
     Standardized Routing Instance data container.
     """
-    def __init__(self, name, date, depot, locations, demands, actual_routes, truck_names=None, node_names=None):
+    def __init__(self, name, date, depot, locations, demands, actual_routes, truck_names=None, node_names=None, vehicle_capacities=None):
         self.name = name
         self.date = date # Date string (e.g. "2026-05-28", "12/2/2025")
         self.depot = depot # (lat, lon)
@@ -19,6 +20,19 @@ class RoutingInstance:
         self.actual_routes = actual_routes # [[(lat, lon), ...], ...]
         self.truck_names = truck_names or [f"Truck {i+1}" for i in range(len(actual_routes))]
         self.node_names = node_names or {}
+        
+        # Vehicle capacities
+        if vehicle_capacities is not None and len(vehicle_capacities) == len(self.actual_routes):
+            self.vehicle_capacities = vehicle_capacities
+        else:
+            demands_map = dict(zip(locations, demands))
+            caps = []
+            for r in actual_routes:
+                r_load = sum(demands_map.get(loc, 1.0) for loc in r)
+                # Standard food bank box truck capacity is 26 pallets (or max observed route load)
+                cap = max(math.ceil(r_load), 26.0)
+                caps.append(cap)
+            self.vehicle_capacities = caps if caps else [26.0] * max(len(actual_routes), 1)
 
     @property
     def num_trucks(self):
@@ -62,7 +76,35 @@ def read_csv_safe(file_path):
             continue
     return pd.read_csv(file_path, encoding_errors='replace')
 
-def load_route_instances(file_path, depot=None):
+
+def load_trucks_file(trucks_file):
+    """
+    Loads vehicle capacities and names from a trucks CSV file.
+    Supports headers like 'Vehicle', 'Truck', 'Truck Name', 'Pallet Capacity', 'Capacity'.
+    """
+    if not trucks_file or not os.path.exists(trucks_file):
+        return None
+    df = read_csv_safe(trucks_file)
+    df.columns = [str(c).strip() for c in df.columns]
+
+    veh_col = find_column(df.columns, ['vehicle', 'truck', 'truck name', 'name', 'rt'])
+    cap_col = find_column(df.columns, ['pallet capacity', 'capacity', 'max pallets', 'pallets', 'cap'])
+
+    if not cap_col:
+        return None
+
+    trucks = []
+    for _, row in df.iterrows():
+        try:
+            val_str = str(row[cap_col]).replace(',', '').strip()
+            cap_val = float(val_str)
+        except Exception:
+            continue
+        v_name = str(row[veh_col]).strip() if veh_col and pd.notna(row[veh_col]) else f"Truck_{len(trucks)+1}"
+        trucks.append({'vehicle': v_name, 'capacity': cap_val})
+    return trucks
+
+def load_route_instances(file_path, depot=None, trucks_file=None):
     """
     Intelligently parses any route CSV file into one or more RoutingInstance objects.
     Supports single-day files, multi-day files, and time-window partitioned files.
@@ -71,6 +113,7 @@ def load_route_instances(file_path, depot=None):
         raise FileNotFoundError(f"Input route file not found: {file_path}")
 
     depot = depot or DEFAULT_DEPOT
+    custom_trucks = load_trucks_file(trucks_file) if trucks_file else None
 
     # Read CSV
     df = read_csv_safe(file_path)
@@ -201,6 +244,37 @@ def load_route_instances(file_path, depot=None):
         base_fname = os.path.splitext(os.path.basename(file_path))[0]
         instance_name = f"{base_fname} [{date_str}]" if date_str != "N/A" else f"{base_fname} [{inst_key}]"
         
+        # Assign custom vehicle capacities if trucks_file provided
+        assigned_caps = None
+        assigned_t_names = None
+        if custom_trucks:
+            demands_map = dict(zip(all_locations, all_demands))
+            truck_dict = {t['vehicle']: t['capacity'] for t in custom_trucks}
+            
+            matched = True
+            caps = []
+            for t_name in truck_names:
+                if t_name in truck_dict:
+                    caps.append(truck_dict[t_name])
+                else:
+                    matched = False
+                    break
+            
+            if matched and len(caps) == len(actual_routes):
+                assigned_caps = caps
+                assigned_t_names = list(truck_names)
+            else:
+                avail = sorted(custom_trucks, key=lambda x: x['capacity'], reverse=True)
+                assigned_caps = []
+                assigned_t_names = []
+                for i in range(len(actual_routes)):
+                    if i < len(avail):
+                        assigned_caps.append(avail[i]['capacity'])
+                        assigned_t_names.append(avail[i]['vehicle'])
+                    else:
+                        assigned_caps.append(26.0)
+                        assigned_t_names.append(f"Truck_{i+1}")
+
         inst = RoutingInstance(
             name=instance_name,
             date=date_str,
@@ -208,8 +282,9 @@ def load_route_instances(file_path, depot=None):
             locations=all_locations,
             demands=all_demands,
             actual_routes=actual_routes,
-            truck_names=truck_names,
-            node_names=node_names
+            truck_names=assigned_t_names or truck_names,
+            node_names=node_names,
+            vehicle_capacities=assigned_caps
         )
         instances.append(inst)
 

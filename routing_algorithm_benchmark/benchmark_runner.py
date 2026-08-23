@@ -24,7 +24,7 @@ except (ImportError, ValueError):
     from algorithms.bi_objective import bi_objective_routing
     from algorithms.ortools_solver import ortools_routing
 
-def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', include_ortools=True):
+def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', include_ortools=True, trucks_file=None):
     """
     Executes the multi-algorithm routing benchmark on an input CSV route file using Valhalla road network.
     """
@@ -39,7 +39,9 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
     print(f"Depot Location:   Lat {depot[0]:.6f}, Lon {depot[1]:.6f}")
     print(f"Distance Metric:  {metric_name}")
     
-    instances = load_route_instances(input_file, depot=depot)
+    if trucks_file:
+        print(f"Trucks File:      {trucks_file}")
+    instances = load_route_instances(input_file, depot=depot, trucks_file=trucks_file)
     print(f"Found {len(instances)} routing instance(s) to evaluate.\n")
 
     summary_rows = []
@@ -101,7 +103,7 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
 
         # 2. Min-Max mTSP (Tour Partitioning)
         try:
-            mtsp_routes = tour_partitioning_mtsp(depot, inst.locations, inst.num_trucks, dist_matrix)
+            mtsp_routes = tour_partitioning_mtsp(depot, inst.locations, inst.num_trucks, dist_matrix, demands=inst.demands, vehicle_capacities=inst.vehicle_capacities)
             mtsp_eval = evaluate_routes(depot, mtsp_routes, demands_map, dist_matrix)
             summary_rows.append(make_row('Min-Max mTSP (Tour Partitioning)', mtsp_eval))
             print("  ✓ Min-Max mTSP completed")
@@ -110,7 +112,7 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
 
         # 3. CVRP ITP (Iterated Tour Partitioning)
         try:
-            cvrp_routes = cvrp_itp(depot, inst.locations, inst.demands, inst.num_trucks, dist_matrix)
+            cvrp_routes = cvrp_itp(depot, inst.locations, inst.demands, inst.num_trucks, dist_matrix, vehicle_capacities=inst.vehicle_capacities)
             cvrp_eval = evaluate_routes(depot, cvrp_routes, demands_map, dist_matrix)
             summary_rows.append(make_row('CVRP ITP (Iterated Partitioning)', cvrp_eval))
             print("  ✓ CVRP ITP completed")
@@ -119,7 +121,7 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
 
         # 4. MLP Geometric Scaling (Minimum Latency)
         try:
-            mlp_routes = mlp_geometric_scaling(depot, inst.locations, inst.num_trucks, dist_matrix)
+            mlp_routes = mlp_geometric_scaling(depot, inst.locations, inst.num_trucks, dist_matrix, demands=inst.demands, vehicle_capacities=inst.vehicle_capacities)
             mlp_eval = evaluate_routes(depot, mlp_routes, demands_map, dist_matrix)
             summary_rows.append(make_row('MLP Geometric Scaling (Latency)', mlp_eval))
             print("  ✓ MLP Geometric Scaling completed")
@@ -128,7 +130,7 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
 
         # 5. Bi-Objective (Makespan & Latency)
         try:
-            bi_routes = bi_objective_routing(depot, inst.locations, inst.num_trucks, dist_matrix)
+            bi_routes = bi_objective_routing(depot, inst.locations, inst.num_trucks, dist_matrix, demands=inst.demands, vehicle_capacities=inst.vehicle_capacities)
             bi_eval = evaluate_routes(depot, bi_routes, demands_map, dist_matrix)
             summary_rows.append(make_row('Bi-Objective (Makespan & Latency)', bi_eval))
             print("  ✓ Bi-Objective Routing completed")
@@ -138,7 +140,7 @@ def run_benchmark(input_file, output_csv=None, depot=None, metric='valhalla', in
         # 6. OR-Tools Metaheuristic
         if include_ortools:
             try:
-                ortools_routes = ortools_routing(depot, inst.locations, inst.demands, inst.num_trucks, dist_matrix, time_limit_seconds=2)
+                ortools_routes = ortools_routing(depot, inst.locations, inst.demands, inst.num_trucks, dist_matrix, time_limit_seconds=2, vehicle_capacities=inst.vehicle_capacities)
                 ortools_eval = evaluate_routes(depot, ortools_routes, demands_map, dist_matrix)
                 summary_rows.append(make_row('OR-Tools (Guided Local Search)', ortools_eval))
                 print("  ✓ OR-Tools Guided Local Search completed")
@@ -230,6 +232,11 @@ def main():
         help="Path to input CSV route file (e.g. anon_routed_orders_5_28_26.csv or routes_sample.csv)"
     )
     parser.add_argument(
+        '-t', '--trucks',
+        default=None,
+        help="Path to trucks CSV file defining custom vehicle capacities (e.g. trucks.csv)"
+    )
+    parser.add_argument(
         '-o', '--output',
         default=None,
         help="Path to output summary CSV file. Defaults to benchmark_summary_<input_name>.csv"
@@ -266,7 +273,8 @@ def main():
         output_csv=args.output,
         depot=depot,
         metric=args.metric,
-        include_ortools=not args.no_ortools
+        include_ortools=not args.no_ortools,
+        trucks_file=args.trucks
     )
 
 if __name__ == '__main__':

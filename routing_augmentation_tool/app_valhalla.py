@@ -1,3 +1,61 @@
+
+def generate_accepted_changes_report(accepted_history, baseline_routes, current_routes, truck_names, node_names, demands, file_label="Routing Optimization"):
+    """
+    Generates a clean, comprehensive text audit report describing all accepted route changes.
+    """
+    import time
+    lines = []
+    lines.append("=" * 80)
+    lines.append("  ROUTING OPTIMIZATION - ACCEPTED CHANGES AUDIT REPORT")
+    lines.append(f"  Dataset / File: {file_label}")
+    lines.append(f"  Generated On:   {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"  Modifications:  {len(accepted_history)} accepted change(s)")
+    lines.append("=" * 80)
+    lines.append("")
+
+    # Section 1: Chronological Changes
+    lines.append("--------------------------------------------------------------------------------")
+    lines.append("1. CHRONOLOGICAL LOG OF ACCEPTED MODIFICATIONS")
+    lines.append("--------------------------------------------------------------------------------")
+    if not accepted_history:
+        lines.append("  No local improvements or manual modifications have been accepted yet.")
+        lines.append("  All routes remain in their original baseline configuration.")
+        lines.append("")
+    else:
+        for entry in accepted_history:
+            lines.append(f"\n[CHANGE #{entry['step']}] - {entry.get('timestamp', 'N/A')}")
+            lines.append(f"  Summary: {entry.get('description', 'Route Improvement')}")
+            lines.append("  Truck Details:")
+            for chg in entry.get('changes', []):
+                lines.append(f"    * Truck: {chg['truck_name']}")
+                lines.append(f"      - Original: {chg['orig_sequence']}")
+                lines.append(f"        Load: {chg['orig_load']} pallets ({chg['orig_stops']} stops)")
+                lines.append(f"      - Improved: {chg['new_sequence']}")
+                lines.append(f"        Load: {chg['new_load']} pallets ({chg['new_stops']} stops)")
+            lines.append("")
+
+    # Section 2: Final State
+    lines.append("--------------------------------------------------------------------------------")
+    lines.append("2. FINAL CURRENT ROUTE SCHEDULE")
+    lines.append("--------------------------------------------------------------------------------")
+    total_stops = 0
+    total_pallets = 0
+    for idx, r in enumerate(current_routes):
+        t_name = truck_names[idx]
+        load = sum(demands[n] for n in r)
+        total_stops += len(r)
+        total_pallets += load
+        stop_names = ["Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r)] + ["Depot"]
+        lines.append(f"\nTruck: {t_name}")
+        lines.append(f"  Total Stops: {len(r)} | Pallet Load: {load} pallets")
+        lines.append(f"  Sequence:    {' -> '.join(stop_names)}")
+
+    lines.append("")
+    lines.append("=" * 80)
+    lines.append(f"FLEET TOTALS: {len(current_routes)} Active Trucks | {total_stops} Total Stops | {total_pallets} Total Pallets")
+    lines.append("=" * 80)
+    return "\n".join(lines)
+
 import requests
 import json
 import os
@@ -433,6 +491,10 @@ if uploaded_file is not None:
         st.session_state['current_file_hash'] = file_hash
         if 'accepted_routes' in st.session_state:
             del st.session_state['accepted_routes']
+        if 'accepted_moves_history' in st.session_state:
+            del st.session_state['accepted_moves_history']
+        if 'baseline_routes' in st.session_state:
+            del st.session_state['baseline_routes']
         if 'rejected_moves' in st.session_state:
             del st.session_state['rejected_moves']
             
@@ -605,9 +667,16 @@ if uploaded_file is not None:
                     if t_name in truck_name_to_idx:
                         t_idx = truck_name_to_idx[t_name]
                         initial_routes[t_idx].append(node_id)
-            st.session_state['accepted_routes'] = initial_routes
+            st.session_state['accepted_routes'] = [list(r) for r in initial_routes]
+            st.session_state['baseline_routes'] = [list(r) for r in initial_routes]
+            st.session_state['accepted_moves_history'] = []
         else:
             initial_routes = st.session_state['accepted_routes']
+
+        if 'accepted_moves_history' not in st.session_state:
+            st.session_state['accepted_moves_history'] = []
+        if 'baseline_routes' not in st.session_state:
+            st.session_state['baseline_routes'] = [list(r) for r in initial_routes]
 
                     
         st.info("Parsing completed. Preparing routing engine...")
@@ -817,6 +886,34 @@ if uploaded_file is not None:
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if st.button("Accept Improvement", type="primary"):
+                        import time
+                        change_records = []
+                        for idx in changed_route_indices:
+                            t_name = truck_names[idx]
+                            r_orig = initial_routes[idx]
+                            r_new = selected_new_routes[idx]
+                            orig_names = ["Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_orig)] + ["Depot"]
+                            new_names = ["Depot"] + [f"{node_names[n]} (#{i+1})" for i, n in enumerate(r_new)] + ["Depot"]
+                            change_records.append({
+                                'truck_name': t_name,
+                                'orig_sequence': " -> ".join(orig_names),
+                                'new_sequence': " -> ".join(new_names),
+                                'orig_load': sum(demands[n] for n in r_orig),
+                                'new_load': sum(demands[n] for n in r_new),
+                                'orig_stops': len(r_orig),
+                                'new_stops': len(r_new)
+                            })
+                        
+                        history_entry = {
+                            'step': len(st.session_state.get('accepted_moves_history', [])) + 1,
+                            'description': top_moves[move_idx][2],
+                            'changes': change_records,
+                            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        if 'accepted_moves_history' not in st.session_state:
+                            st.session_state['accepted_moves_history'] = []
+                        st.session_state['accepted_moves_history'].append(history_entry)
+
                         st.session_state['accepted_routes'] = selected_new_routes
                         st.session_state['touched_routes'] = set(changed_route_indices)
                         if 'last_run_params' in st.session_state:
@@ -1001,12 +1098,51 @@ if uploaded_file is not None:
             export_df = pd.DataFrame(export_rows)
             csv_str = export_df.to_csv(index=False)
 
-            st.download_button(
-                label="Download Updated Routes CSV",
-                data=csv_str,
-                file_name="updated_routes.csv",
-                mime="text/csv"
+            st.markdown("---")
+            st.subheader("Export Routes & Change Log")
+
+            accepted_hist = st.session_state.get('accepted_moves_history', [])
+            report_text = generate_accepted_changes_report(
+                accepted_hist,
+                st.session_state.get('baseline_routes', initial_routes),
+                initial_routes,
+                truck_names,
+                node_names,
+                demands,
+                file_label=uploaded_file.name if uploaded_file else "Routing Optimization"
             )
+
+            if accepted_hist:
+                with st.expander(f"View Accepted Changes History ({len(accepted_hist)} modification{'s' if len(accepted_hist) > 1 else ''} applied)", expanded=False):
+                    for item in accepted_hist:
+                        st.markdown(f"**Change #{item['step']}** ({item.get('timestamp', '')}): *{item['description']}*")
+                        for c in item.get('changes', []):
+                            st.caption(f"• **Truck {c['truck_name']}**: {c['orig_sequence']} -> **{c['new_sequence']}** (Load: {c['new_load']} plts)")
+
+            exp_col1, exp_col2, exp_col3 = st.columns([1.2, 1, 1])
+            with exp_col1:
+                st.download_button(
+                    label=f"Download Accepted Changes Log ({len(accepted_hist)} applied)",
+                    data=report_text,
+                    file_name="accepted_changes_log.txt",
+                    mime="text/plain",
+                    type="primary" if accepted_hist else "secondary"
+                )
+            with exp_col2:
+                st.download_button(
+                    label="Download Updated Routes CSV",
+                    data=csv_str,
+                    file_name="updated_routes.csv",
+                    mime="text/csv"
+                )
+            with exp_col3:
+                if accepted_hist:
+                    if st.button("Revert All Accepted Changes"):
+                        st.session_state['accepted_routes'] = [list(r) for r in st.session_state['baseline_routes']]
+                        st.session_state['accepted_moves_history'] = []
+                        if 'last_run_params' in st.session_state:
+                            del st.session_state['last_run_params']
+                        st.rerun()
             
             if needs_optimization:
                 st.subheader("Searching for Improvements...")
