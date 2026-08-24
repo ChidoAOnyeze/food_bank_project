@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import re
 import math
 import pandas as pd
-import numpy as np
 
 from validator import inspect_and_diagnose_csv, DataValidationError
 

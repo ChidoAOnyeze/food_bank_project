@@ -1,5 +1,3 @@
-import math
-
 def k_path_dense_search(start, unvisited_nodes, limit, dist_fn):
     """
     Subroutine for Geometric Scaling:

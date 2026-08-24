@@ -1,7 +1,6 @@
 import csv
 import collections
 import statistics
-import sys
 import math
 
 from analyze_routing import evaluate_routes
@@ -13,9 +12,23 @@ from analyze_routing import exact_chunk
 
 DEPOT = (-73.87299938, 40.80594755)
 
+import os
+
+def _find_csv(filename):
+    for p in [
+        os.path.join(os.path.dirname(__file__), "..", "dataset", filename),
+        os.path.join(os.path.dirname(__file__), filename),
+        os.path.join("dataset", filename),
+        filename
+    ]:
+        if os.path.exists(p):
+            return p
+    return filename
+
 def analyze():
     # 1. Parse routes_sample.csv
-    with open('routes_sample.csv', 'r', encoding='utf-8-sig') as f:
+    csv_path = _find_csv('routes_sample.csv')
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         data = list(reader)
 

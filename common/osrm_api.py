@@ -8,7 +8,6 @@ Provides modular abstractions for querying OSRM services:
 """
 
 import json
-import time
 import requests
 from geopy.distance import geodesic
 

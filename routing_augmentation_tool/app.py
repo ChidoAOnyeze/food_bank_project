@@ -1,9 +1,74 @@
+import os
+import sys
+import json
+import time
+import math
+import threading
+import concurrent.futures
+import streamlit as st
+import pandas as pd
+import folium
+from folium.plugins import PolyLineTextPath
+from streamlit_folium import st_folium
+from ortools.constraint_solver import routing_enums_pb2, pywrapcp
+
+# Ensure common package is in sys.path
+_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_common_dir = os.path.join(_parent_dir, "common")
+for _p in [_common_dir, _parent_dir]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from common.valhalla_api import (
+        default_valhalla_client,
+        get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
+    )
+    from common.osrm_api import (
+        fetch_osrm_leg_geometry,
+    )
+except ImportError:
+    try:
+        from valhalla_api import (
+            default_valhalla_client,
+            get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
+        )
+        from osrm_api import (
+            fetch_osrm_leg_geometry,
+        )
+    except ImportError:
+        from .valhalla_api import (
+            default_valhalla_client,
+            get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
+        )
+        from .osrm_api import (
+            fetch_osrm_leg_geometry,
+        )
+
+
+def _get_cache_file_path(filename):
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(dir_path)
+    common_p = os.path.join(parent_dir, "common", filename)
+    if os.path.exists(common_p):
+        return common_p
+    local_p = os.path.join(dir_path, filename)
+    if os.path.exists(local_p):
+        return local_p
+    root_p = os.path.join(parent_dir, filename)
+    if os.path.exists(root_p):
+        return root_p
+    return common_p
+
+
+VALHALLA_CACHE_FILE = _get_cache_file_path("valhalla_cache.json")
+VALHALLA_GEOM_CACHE_FILE = _get_cache_file_path("valhalla_geom_cache.json")
+
 
 def generate_accepted_changes_report(accepted_history, baseline_routes, current_routes, truck_names, node_names, demands, file_label="Routing Optimization"):
     """
     Generates a clean, comprehensive text audit report describing all accepted route changes.
     """
-    import time
     lines = []
     lines.append("=" * 80)
     lines.append("  ROUTING OPTIMIZATION - ACCEPTED CHANGES AUDIT REPORT")
@@ -55,92 +120,6 @@ def generate_accepted_changes_report(accepted_history, baseline_routes, current_
     lines.append(f"FLEET TOTALS: {len(current_routes)} Active Trucks | {total_stops} Total Stops | {total_pallets} Total Pallets")
     lines.append("=" * 80)
     return "\n".join(lines)
-
-import threading
-import time
-import requests
-import json
-import os
-import sys
-import streamlit as st
-import pandas as pd
-import numpy as np
-import folium
-from folium.plugins import PolyLineTextPath
-import math
-from streamlit_folium import st_folium
-from geopy.distance import geodesic
-from ortools.constraint_solver import routing_enums_pb2
-from ortools.constraint_solver import pywrapcp
-import itertools
-
-# Ensure common package is in sys.path
-_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_common_dir = os.path.join(_parent_dir, "common")
-for _p in [_common_dir, _parent_dir]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
-try:
-    from common.valhalla_api import (
-        ValhallaClient,
-        default_valhalla_client,
-        get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
-        decode_polyline,
-    )
-    from common.osrm_api import (
-        OSRMClient,
-        default_osrm_client,
-        fetch_osrm_leg_geometry,
-        fetch_osrm_route_geometry,
-        fetch_osrm_table,
-    )
-except ImportError:
-    try:
-        from valhalla_api import (
-            ValhallaClient,
-            default_valhalla_client,
-            get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
-            decode_polyline,
-        )
-        from osrm_api import (
-            OSRMClient,
-            default_osrm_client,
-            fetch_osrm_leg_geometry,
-            fetch_osrm_route_geometry,
-            fetch_osrm_table,
-        )
-    except ImportError:
-        from .valhalla_api import (
-            ValhallaClient,
-            default_valhalla_client,
-            get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
-            decode_polyline,
-        )
-        from .osrm_api import (
-            OSRMClient,
-            default_osrm_client,
-            fetch_osrm_leg_geometry,
-            fetch_osrm_route_geometry,
-            fetch_osrm_table,
-        )
-
-def _get_cache_file_path(filename):
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(dir_path)
-    common_p = os.path.join(parent_dir, "common", filename)
-    if os.path.exists(common_p):
-        return common_p
-    local_p = os.path.join(dir_path, filename)
-    if os.path.exists(local_p):
-        return local_p
-    root_p = os.path.join(parent_dir, filename)
-    if os.path.exists(root_p):
-        return root_p
-    return common_p
-
-VALHALLA_CACHE_FILE = _get_cache_file_path("valhalla_cache.json")
-VALHALLA_GEOM_CACHE_FILE = _get_cache_file_path("valhalla_geom_cache.json")
 
 def generate_relocate_moves(routes, truck_names, node_names, touched_routes=None):
     moves = []
@@ -359,7 +338,6 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
         return
 
     print(f"🔄 [Geometry Prefetch] Found {len(sub_seqs_to_fetch)} uncached route sub-sequences. Fetching from Valhalla in background (polite 2-worker pool)...")
-    import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         batch_results = list(executor.map(fetch_subseq_geometry_batch, sub_seqs_to_fetch))
         

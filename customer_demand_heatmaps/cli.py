@@ -1,12 +1,11 @@
-import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sys
 import argparse
-import os
-import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days
-from heatmap_generator import create_demand_heatmap_map, save_heatmap_html, METRIC_LABELS
+from heatmap_generator import create_demand_heatmap_map, save_heatmap_html
 
 METRIC_CLI_MAP = {
     'unrounded': 'total_pallets_unrounded',

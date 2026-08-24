@@ -176,5 +176,18 @@ def main(csv_file):
 
 
 if __name__ == "__main__":
-    file_path = sys.argv[1] if len(sys.argv) > 1 else 'sample_orders_routing.csv'
+    if len(sys.argv) > 1:
+        file_path = sys.argv[1]
+    else:
+        for p in [
+            os.path.join(os.path.dirname(__file__), "..", "dataset", "sample_orders_routing.csv"),
+            os.path.join(os.path.dirname(__file__), "sample_orders_routing.csv"),
+            os.path.join("dataset", "sample_orders_routing.csv"),
+            "sample_orders_routing.csv"
+        ]:
+            if os.path.exists(p):
+                file_path = p
+                break
+        else:
+            file_path = "sample_orders_routing.csv"
     main(file_path)

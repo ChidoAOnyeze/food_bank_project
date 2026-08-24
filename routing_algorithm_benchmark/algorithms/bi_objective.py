@@ -1,5 +1,3 @@
-import math
-
 def build_mst(nodes, depot, dist_fn):
     """
     Constructs a Minimum Spanning Tree (MST) rooted at the depot using Prim's algorithm.

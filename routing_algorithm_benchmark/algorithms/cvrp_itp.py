@@ -1,4 +1,3 @@
-import math
 try:
     from .min_max_mtsp import get_tsp_2_approx
 except (ImportError, ValueError):

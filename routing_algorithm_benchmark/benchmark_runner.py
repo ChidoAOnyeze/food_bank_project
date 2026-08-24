@@ -9,7 +9,7 @@ if pkg_dir not in sys.path:
 
 try:
     from .loader import load_route_instances, DEFAULT_DEPOT
-    from .metrics import get_distance_fn, create_instance_distance_matrix, evaluate_routes
+    from .metrics import create_instance_distance_matrix, evaluate_routes
     from .algorithms.min_max_mtsp import tour_partitioning_mtsp
     from .algorithms.cvrp_itp import cvrp_itp
     from .algorithms.mlp_geometric import mlp_geometric_scaling
@@ -17,7 +17,7 @@ try:
     from .algorithms.ortools_solver import ortools_routing
 except (ImportError, ValueError):
     from loader import load_route_instances, DEFAULT_DEPOT
-    from metrics import get_distance_fn, create_instance_distance_matrix, evaluate_routes
+    from metrics import create_instance_distance_matrix, evaluate_routes
     from algorithms.min_max_mtsp import tour_partitioning_mtsp
     from algorithms.cvrp_itp import cvrp_itp
     from algorithms.mlp_geometric import mlp_geometric_scaling

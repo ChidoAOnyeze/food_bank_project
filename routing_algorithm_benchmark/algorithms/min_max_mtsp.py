@@ -1,5 +1,3 @@
-import math
-
 def get_tsp_2_approx(nodes, dist_fn):
     """
     Constructs a 2-approximation metric TSP tour using Prim's MST and DFS preorder traversal.

@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import argparse
-import pandas as pd
 
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands
 from statistics_reporter import export_distribution_report_files

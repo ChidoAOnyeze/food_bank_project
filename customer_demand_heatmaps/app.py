@@ -7,12 +7,10 @@ import pandas as pd
 import io
 import base64
 from streamlit_folium import st_folium
-import matplotlib.pyplot as plt
-
 from validator import DataValidationError
-from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days, DAYS_ORDER
-from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS, METRIC_UNITS
-from statistics_reporter import compute_detailed_statistics, generate_distribution_figure, export_distribution_report_files
+from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days
+from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS
+from statistics_reporter import compute_detailed_statistics, generate_distribution_figure
 
 st.set_page_config(
     page_title="Customer Demand & Order Analytics",

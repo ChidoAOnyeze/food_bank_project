@@ -1,7 +1,5 @@
 import folium
 from folium.plugins import HeatMap
-import pandas as pd
-import numpy as np
 
 METRIC_LABELS = {
     'total_pallets_unrounded': 'Total Pallets Consumed (Unrounded)',

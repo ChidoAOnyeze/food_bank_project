@@ -1,8 +1,5 @@
 import os
-import re
-import math
 import pandas as pd
-import numpy as np
 
 class DataValidationError(Exception):
     """Custom exception raised when an input CSV has fatal structural or data issues."""
