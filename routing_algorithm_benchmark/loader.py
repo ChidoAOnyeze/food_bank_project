@@ -77,11 +77,23 @@ def read_csv_safe(file_path):
     return pd.read_csv(file_path, encoding_errors='replace')
 
 
+def resolve_file_path(path):
+    if not path:
+        return None
+    if os.path.exists(path):
+        return path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dataset_p = os.path.join(parent_dir, "dataset", os.path.basename(path))
+    if os.path.exists(dataset_p):
+        return dataset_p
+    return path
+
 def load_trucks_file(trucks_file):
     """
     Loads vehicle capacities and names from a trucks CSV file.
     Supports headers like 'Vehicle', 'Truck', 'Truck Name', 'Pallet Capacity', 'Capacity'.
     """
+    trucks_file = resolve_file_path(trucks_file)
     if not trucks_file or not os.path.exists(trucks_file):
         return None
     df = read_csv_safe(trucks_file)
@@ -109,7 +121,8 @@ def load_route_instances(file_path, depot=None, trucks_file=None):
     Intelligently parses any route CSV file into one or more RoutingInstance objects.
     Supports single-day files, multi-day files, and time-window partitioned files.
     """
-    if not os.path.exists(file_path):
+    file_path = resolve_file_path(file_path)
+    if not file_path or not os.path.exists(file_path):
         raise FileNotFoundError(f"Input route file not found: {file_path}")
 
     depot = depot or DEFAULT_DEPOT

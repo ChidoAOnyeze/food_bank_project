@@ -60,9 +60,12 @@ def generate_all_customer_csvs(input_file, output_prefix=None):
 if __name__ == '__main__':
     # Generate for all datasets
     datasets = [
+        "dataset/orders_6_months_synthetic.csv",
+        "dataset/sample_orders_routing.csv",
+        "dataset/routes_sample.csv",
+        "dataset/Routed Orders 5.28.26_anonymized.csv",
         "routing_comparison/sample_orders_routing.csv",
-        "routing_comparison/routes_sample.csv",
-        "routing_augmentation_tool/anon_routed_orders_5_28_26.csv"
+        "routing_comparison/routes_sample.csv"
     ]
     for ds in datasets:
         if os.path.exists(ds):

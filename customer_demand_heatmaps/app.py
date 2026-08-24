@@ -21,6 +21,41 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS: Replace animated running/biking/swimming icons with a clean circular spinner
+st.markdown("""
+<style>
+[data-testid="stStatusWidget"] svg,
+.stStatusWidget svg {
+    display: none !important;
+}
+
+[data-testid="stStatusWidget"],
+.stStatusWidget {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+[data-testid="stStatusWidget"]::before,
+.stStatusWidget::before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 16px !important;
+    height: 16px !important;
+    border: 2.5px solid #cbd5e1 !important;
+    border-top-color: #2563eb !important;
+    border-radius: 50% !important;
+    animation: customSpinner 0.75s linear infinite !important;
+}
+
+@keyframes customSpinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # --- CACHED HELPER FUNCTIONS FOR INSTANT DAY SWITCHING ---
 @st.cache_data(show_spinner="Loading and validating orders dataset...", ttl=3600)
 def get_cached_orders_from_bytes(file_bytes, file_name, rounding_mode):
@@ -48,10 +83,10 @@ and explore **means, medians, and distribution bar charts** across days of the w
 st.sidebar.header("Data Source")
 
 SAMPLE_FILES = {
-    "6-Month Dataset (orders_6_months_synthetic.csv)": "customer_demand_heatmaps/orders_6_months_synthetic.csv",
-    "Sample Orders (sample_orders_routing.csv)": "routing_comparison/sample_orders_routing.csv",
-    "Multi-Day Sample (routes_sample.csv)": "routing_comparison/routes_sample.csv",
-    "Routed Orders (anon_routed_orders_5_28_26.csv)": "routing_augmentation_tool/anon_routed_orders_5_28_26.csv"
+    "6-Month Dataset (orders_6_months_synthetic.csv)": "dataset/orders_6_months_synthetic.csv",
+    "Sample Orders (sample_orders_routing.csv)": "dataset/sample_orders_routing.csv",
+    "Multi-Day Sample (routes_sample.csv)": "dataset/routes_sample.csv",
+    "Routed Orders (Routed Orders 5.28.26_anonymized.csv)": "dataset/Routed Orders 5.28.26_anonymized.csv"
 }
 
 data_source = st.sidebar.radio(
@@ -88,9 +123,13 @@ if data_source == "Upload CSV File":
 else:
     sample_choice = st.sidebar.selectbox("Select Sample Dataset:", list(SAMPLE_FILES.keys()))
     sample_path = SAMPLE_FILES[sample_choice]
+    filename = os.path.basename(sample_path)
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     possible_paths = [
         sample_path,
+        os.path.join(parent_dir, "dataset", filename),
+        os.path.join(parent_dir, sample_path),
         os.path.join("..", sample_path),
         os.path.join(os.path.dirname(__file__), "..", sample_path)
     ]

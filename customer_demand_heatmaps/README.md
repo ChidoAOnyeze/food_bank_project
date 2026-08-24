@@ -40,10 +40,10 @@ Generate static HTML heatmaps and aggregated CSV summaries directly from the ter
 
 ```bash
 # Generate heatmap for Wednesday (Unrounded Pallets)
-python customer_demand_heatmaps/cli.py -i routing_comparison/sample_orders_routing.csv -d Wednesday -m unrounded -o heatmap_wednesday.html --csv-out summary_wednesday.csv
+python customer_demand_heatmaps/cli.py -i dataset/sample_orders_routing.csv -d Wednesday -m unrounded -o heatmap_wednesday.html --csv-out summary_wednesday.csv
 
 # Generate heatmap for All Days (Total Number of Orders)
-python customer_demand_heatmaps/cli.py -i routing_comparison/routes_sample.csv -d "All Days" -m orders -o heatmap_orders_all.html
+python customer_demand_heatmaps/cli.py -i dataset/routes_sample.csv -d "All Days" -m orders -o heatmap_orders_all.html
 ```
 
 ### CLI Metric Options:

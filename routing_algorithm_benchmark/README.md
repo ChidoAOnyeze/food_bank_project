@@ -10,13 +10,13 @@ Run the benchmark from the terminal against any CSV route file:
 
 ```bash
 # Run on standard delivery orders file
-python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv
+python3 routing_algorithm_benchmark/benchmark_runner.py -i dataset/routes_sample.csv
 
-# Pass a custom trucks fleet capacity file (e.g. trucks.csv)
-python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv -t trucks.csv
+# Pass a custom trucks fleet capacity file (e.g. dataset/trucks.csv)
+python3 routing_algorithm_benchmark/benchmark_runner.py -i dataset/routes_sample.csv -t dataset/trucks.csv
 
 # Save results to a custom CSV file
-python3 routing_algorithm_benchmark/benchmark_runner.py -i routing_comparison/routes_sample.csv -o benchmark_results.csv
+python3 routing_algorithm_benchmark/benchmark_runner.py -i dataset/routes_sample.csv -o benchmark_results.csv
 ```
 
 ---

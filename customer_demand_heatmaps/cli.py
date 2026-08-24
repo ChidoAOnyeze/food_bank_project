@@ -57,8 +57,15 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Loading order data from: {args.input}")
-    raw_df = load_and_preprocess_orders(args.input, rounding_mode=args.rounding)
+    input_path = args.input
+    if not os.path.exists(input_path):
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        dataset_p = os.path.join(parent_dir, "dataset", os.path.basename(input_path))
+        if os.path.exists(dataset_p):
+            input_path = dataset_p
+
+    print(f"Loading order data from: {input_path}")
+    raw_df = load_and_preprocess_orders(input_path, rounding_mode=args.rounding)
     available_days = get_available_days(raw_df)
     print(f"Available days in dataset: {', '.join(available_days)}")
 
