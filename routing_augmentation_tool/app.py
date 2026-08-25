@@ -26,7 +26,9 @@ try:
         get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
     )
     from common.osrm_api import (
+        default_osrm_client,
         fetch_osrm_leg_geometry,
+        fetch_osrm_route_geometry,
     )
 except ImportError:
     try:
@@ -35,7 +37,9 @@ except ImportError:
             get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
         )
         from osrm_api import (
+            default_osrm_client,
             fetch_osrm_leg_geometry,
+            fetch_osrm_route_geometry,
         )
     except ImportError:
         from .valhalla_api import (
@@ -43,7 +47,9 @@ except ImportError:
             get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
         )
         from .osrm_api import (
+            default_osrm_client,
             fetch_osrm_leg_geometry,
+            fetch_osrm_route_geometry,
         )
 
 
@@ -310,6 +316,16 @@ def get_valhalla_distance_matrix(locations):
     return _get_valhalla_distance_matrix(locations, cache_file=VALHALLA_CACHE_FILE, on_error=on_error)
 
 
+def get_osrm_distance_matrix(locations):
+    try:
+        matrix = default_osrm_client.get_distance_matrix(locations)
+        if matrix and len(matrix) == len(locations):
+            return matrix
+    except Exception as e:
+        print(f"[OSRM API Warning] Table query failed, falling back to Valhalla: {e}")
+    return get_valhalla_distance_matrix(locations)
+
+
 
 
 _IN_MEMORY_GEOM_CACHE = {}
@@ -353,18 +369,25 @@ def save_geom_cache_async():
 def save_geom_cache():
     save_geom_cache_async()
 
-def fetch_single_leg_geometry(p1, p2):
+def fetch_single_leg_geometry(p1, p2, use_osrm_first=True):
     if p1 == p2:
         return [p1, p2]
-    coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
-    if coords and len(coords) >= 2:
-        return coords
     
-    # If Valhalla is timing out or busy, instantly fallback to fast OSRM
-    print(f"[OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
-    osrm_coords = fetch_osrm_leg_geometry(p1, p2)
-    if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
-        return osrm_coords
+    if use_osrm_first:
+        osrm_coords = fetch_osrm_leg_geometry(p1, p2)
+        if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
+            return osrm_coords
+        coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
+        if coords and len(coords) >= 2:
+            return coords
+    else:
+        coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
+        if coords and len(coords) >= 2:
+            return coords
+        print(f"[OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
+        osrm_coords = fetch_osrm_leg_geometry(p1, p2)
+        if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
+            return osrm_coords
 
     return [p1, p2]
 
@@ -383,7 +406,21 @@ def is_move_geometry_ready(move_routes, locations):
                 return False
     return True
 
-def fetch_subseq_geometry_batch(sub_seq):
+def fetch_subseq_geometry_batch(sub_seq, use_osrm_first=True):
+    results = {}
+    if len(sub_seq) < 2:
+        return results
+
+    if use_osrm_first:
+        for l_idx in range(len(sub_seq) - 1):
+            p1 = sub_seq[l_idx]
+            p2 = sub_seq[l_idx + 1]
+            k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+            c = fetch_single_leg_geometry(p1, p2, use_osrm_first=True)
+            if c and len(c) > 2:
+                results[k] = c
+        return results
+
     results = default_valhalla_client.fetch_subseq_batch_geometry(sub_seq)
     # If batch failed or timed out, fallback to OSRM / single legs
     if len(results) < len(sub_seq) - 1:
@@ -392,12 +429,12 @@ def fetch_subseq_geometry_batch(sub_seq):
             p2 = sub_seq[l_idx + 1]
             k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
             if k not in results:
-                c = fetch_single_leg_geometry(p1, p2)
+                c = fetch_single_leg_geometry(p1, p2, use_osrm_first=use_osrm_first)
                 if c and len(c) > 2:
                     results[k] = c
     return results
 
-def prefetch_and_cache_routes_geometry(routes_list, locations):
+def prefetch_and_cache_routes_geometry(routes_list, locations, use_osrm_first=True):
     geom_cache = load_geom_cache()
     sub_seqs_to_fetch = []
     
@@ -423,9 +460,10 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
     if not sub_seqs_to_fetch:
         return
 
-    print(f"[Geometry Prefetch] Found {len(sub_seqs_to_fetch)} uncached route sub-sequences. Fetching from routing API...")
+    engine_name = "OSRM" if use_osrm_first else "Valhalla"
+    print(f"[Geometry Prefetch] Found {len(sub_seqs_to_fetch)} uncached route sub-sequences. Fetching from {engine_name}...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        batch_results = list(executor.map(fetch_subseq_geometry_batch, sub_seqs_to_fetch))
+        batch_results = list(executor.map(lambda s: fetch_subseq_geometry_batch(s, use_osrm_first=use_osrm_first), sub_seqs_to_fetch))
         
     new_cached_count = 0
     for res in batch_results:
@@ -461,7 +499,7 @@ def get_full_route_geometry(locations_list, use_road_geometry=True):
             full_path.extend(leg_pts)
     return full_path
 
-def start_background_geometry_prefetch(top_moves, improved_routes, locations, limit=10):
+def start_background_geometry_prefetch(top_moves, improved_routes, locations, limit=10, use_osrm_first=True):
     if not locations:
         return
         
@@ -470,7 +508,7 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
         if improved_routes:
             print("[Background Worker] Pre-fetching road geometry for full fleet solution...")
             try:
-                prefetch_and_cache_routes_geometry(improved_routes, locations)
+                prefetch_and_cache_routes_geometry(improved_routes, locations, use_osrm_first=use_osrm_first)
             except Exception as e:
                 print(f"[Background Worker Warning] Full fleet geometry: {e}")
                 
@@ -481,7 +519,7 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
             for m_idx, move in enumerate(top_moves[:limit]):
                 try:
                     candidate_routes = move[3]
-                    prefetch_and_cache_routes_geometry(candidate_routes, locations)
+                    prefetch_and_cache_routes_geometry(candidate_routes, locations, use_osrm_first=use_osrm_first)
                     time.sleep(0.15)
                 except Exception as e:
                     print(f"[Background Worker Warning] Move {m_idx}: {e}")
@@ -490,11 +528,14 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
     t = threading.Thread(target=worker, daemon=True)
     t.start()
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None, use_osrm=True):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
-    data['distance_matrix'] = get_valhalla_distance_matrix(locations)
+    if use_osrm:
+        data['distance_matrix'] = get_osrm_distance_matrix(locations)
+    else:
+        data['distance_matrix'] = get_valhalla_distance_matrix(locations)
     dist_matrix = data['distance_matrix']
     
     data['demands'] = demands
@@ -809,6 +850,15 @@ render_street_paths = st.sidebar.toggle(
     help="Toggle ON to render turn-by-turn street network paths. Toggle OFF for straight-line connections."
 )
 
+st.sidebar.header("Routing Engine")
+routing_engine = st.sidebar.selectbox(
+    "Primary Routing Engine",
+    ["OSRM (Fast General Road Routing)", "Valhalla (Truck Routing & Commercial Restrictions)"],
+    index=0,
+    help="OSRM provides fast, sub-second route geometries and distance tables. Valhalla enforces commercial vehicle parkway restrictions and bridge clearances."
+)
+use_osrm_engine = ("OSRM" in routing_engine)
+
 st.sidebar.header("Execution Mode")
 test_mode = st.sidebar.toggle("Test Mode (Limit search space)", value=False)
 allow_overcapacity = st.sidebar.toggle("Allow Over-Capacity (Soft Constraint)", value=False)
@@ -966,7 +1016,7 @@ if uploaded_file is not None:
         st.info("Parsing completed. Preparing routing engine...")
         
         # Check if parameters changed to avoid re-running when just interacting with UI
-        current_params = (locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight, test_mode, allow_overcapacity)
+        current_params = (locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight, test_mode, allow_overcapacity, routing_engine)
 
         needs_optimization = ('last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params)
         
@@ -980,7 +1030,8 @@ if uploaded_file is not None:
                     allow_overcapacity=allow_overcapacity,
                     rejected_moves=st.session_state.get('rejected_moves', set()),
                     touched_routes=touched_routes,
-                    previous_candidates=prev_candidates
+                    previous_candidates=prev_candidates,
+                    use_osrm=use_osrm_engine
                 )
                 if res_tuple[0] is not None:
                     init_c, t_moves, f_cost, imp_routes, all_cands = res_tuple
@@ -1002,7 +1053,7 @@ if uploaded_file is not None:
         if 'background_prefetch_params' not in st.session_state or st.session_state['background_prefetch_params'] != current_params:
             st.session_state['background_prefetch_params'] = current_params
             if render_street_paths:
-                start_background_geometry_prefetch(top_moves, improved_routes, locations, limit=10)
+                start_background_geometry_prefetch(top_moves, improved_routes, locations, limit=10, use_osrm_first=use_osrm_engine)
 
         if init_cost is None:
             st.error("Failed to load the initial routes. The starting assignment violates constraints.")
