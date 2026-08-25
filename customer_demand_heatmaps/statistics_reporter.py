@@ -17,6 +17,10 @@ def compute_detailed_statistics(cust_df, group_by_col=None):
     metrics = [
         ('total_pallets_unrounded', 'Unrounded Pallets'),
         ('total_pallets_rounded', 'Rounded Pallets'),
+        ('total_food_pallets', 'Food Pallets'),
+        ('total_pet_food_pallets', 'Pet Food Pallets'),
+        ('total_chemical_pallets', 'Chemical Pallets'),
+        ('total_weight', 'Total Weight (lbs)'),
         ('pallets_per_order', 'Pallets per Order'),
         ('total_orders', 'Total Orders')
     ]
@@ -28,7 +32,7 @@ def compute_detailed_statistics(cust_df, group_by_col=None):
             if col_name not in sub_df.columns or sub_df[col_name].empty:
                 continue
             series = sub_df[col_name].dropna().astype(float)
-            if series.empty:
+            if series.empty or (series == 0).all() and col_name in ['total_food_pallets', 'total_pet_food_pallets', 'total_chemical_pallets', 'total_weight']:
                 continue
             
             n = len(series)
@@ -69,28 +73,44 @@ def compute_detailed_statistics(cust_df, group_by_col=None):
 
     return pd.DataFrame(records)
 
-def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
+def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days', selected_metric='total_pallets_unrounded'):
     """
-    Generates a 4-panel distribution visualization figure containing:
-    1. Day of the Week Pallet & Order Distribution Bar Chart
-    2. Customer Pallets Demand Distribution Histogram & KDE (with Mean/Median markers)
-    3. Pallets per Order Distribution Histogram (with Mean/Median markers)
+    Generates a dynamic 4-panel distribution visualization figure for the chosen metric containing:
+    1. Day of the Week Demand & Order Distribution Bar Chart
+    2. Customer Demand Distribution Histogram & KDE (with Mean/Median markers)
+    3. Regional / Borough Distribution or Pallets per Order Distribution
     4. Top 15 Highest-Demand Customers Bar Chart
     """
     fig, axes = plt.subplots(2, 2, figsize=(16, 11), facecolor='#ffffff')
-    plt.subplots_adjust(hspace=0.35, wspace=0.25)
+    plt.subplots_adjust(hspace=0.38, wspace=0.28)
+
+    # Metric label and unit mapping
+    label_map = {
+        'total_pallets_unrounded': ('Total Pallets (Unrounded)', 'pallets', 'order_pallets'),
+        'total_pallets_rounded': ('Total Pallets (Rounded)', 'rounded plts', 'order_pallets_rounded'),
+        'total_food_pallets': ('Food Pallets', 'food plts', 'food_pallets'),
+        'total_pet_food_pallets': ('Pet Food Pallets', 'pet plts', 'pet_food_pallets'),
+        'total_chemical_pallets': ('Chemical Pallets', 'chem plts', 'chemical_pallets'),
+        'total_weight': ('Total Weight', 'lbs', 'order_weight'),
+        'pallets_per_order': ('Average Pallets per Order', 'plts/order', 'order_pallets'),
+        'total_orders': ('Total Orders', 'orders', 'order_pallets')
+    }
+
+    metric_name, metric_unit, raw_col_name = label_map.get(selected_metric, (selected_metric.replace('_', ' ').title(), 'units', 'order_pallets'))
 
     # Styling settings
-    bar_color = '#3b82f6'
-    accent_color = '#10b981'
     mean_color = '#ef4444'
     median_color = '#8b5cf6'
+
+    # Fallback to total_pallets_unrounded if selected column not present in cust_df
+    actual_col = selected_metric if selected_metric in cust_df.columns else 'total_pallets_unrounded'
 
     # --- PANEL 1: DAY OF THE WEEK DEMAND DISTRIBUTION (BAR CHART) ---
     ax1 = axes[0, 0]
     if raw_df is not None and 'day_of_week' in raw_df.columns:
+        agg_raw_col = raw_col_name if raw_col_name in raw_df.columns else 'order_pallets'
         day_stats = raw_df.groupby('day_of_week').agg(
-            total_pallets=('order_pallets', 'sum'),
+            total_vol=(agg_raw_col, 'sum'),
             total_orders=('order_pallets', 'count')
         ).reindex([d for d in DAYS_ORDER if d in raw_df['day_of_week'].unique()]).dropna()
 
@@ -98,21 +118,21 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
             x_indices = np.arange(len(day_stats))
             width = 0.38
             
-            bars1 = ax1.bar(x_indices - width/2, day_stats['total_pallets'], width, label='Total Pallets (Unrounded)', color='#2563eb', edgecolor='#1d4ed8')
+            bars1 = ax1.bar(x_indices - width/2, day_stats['total_vol'], width, label=f'Total {metric_name}', color='#2563eb', edgecolor='#1d4ed8')
             ax1_twin = ax1.twinx()
             bars2 = ax1_twin.bar(x_indices + width/2, day_stats['total_orders'], width, label='Order Count', color='#10b981', edgecolor='#059669')
 
-            ax1.set_title('Total Pallet Demand & Order Volume by Day of Week', fontsize=12, fontweight='bold', pad=10)
+            ax1.set_title(f'{metric_name} & Order Volume by Day of Week', fontsize=12, fontweight='bold', pad=10)
             ax1.set_xticks(x_indices)
             ax1.set_xticklabels(day_stats.index, rotation=15, fontsize=10)
-            ax1.set_ylabel('Total Pallets', color='#2563eb', fontweight='bold')
+            ax1.set_ylabel(f'Total {metric_name} ({metric_unit})', color='#2563eb', fontweight='bold')
             ax1_twin.set_ylabel('Total Orders', color='#10b981', fontweight='bold')
             ax1.grid(axis='y', linestyle='--', alpha=0.3)
 
             # Data labels
             for b in bars1:
                 h = b.get_height()
-                ax1.annotate(f'{h:.1f}', (b.get_x() + b.get_width()/2, h), ha='center', va='bottom', fontsize=8, xytext=(0, 2), textcoords='offset points')
+                ax1.annotate(f'{h:,.1f}' if h >= 1000 else f'{h:.1f}', (b.get_x() + b.get_width()/2, h), ha='center', va='bottom', fontsize=8, xytext=(0, 2), textcoords='offset points')
             for b in bars2:
                 h = b.get_height()
                 ax1_twin.annotate(f'{int(h)}', (b.get_x() + b.get_width()/2, h), ha='center', va='bottom', fontsize=8, xytext=(0, 2), textcoords='offset points')
@@ -121,55 +141,70 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days'):
     else:
         ax1.text(0.5, 0.5, 'Day of week data not available', ha='center', va='center', fontsize=12)
 
-    # --- PANEL 2: CUSTOMER PALLETS DEMAND HISTOGRAM (WITH MEAN & MEDIAN) ---
+    # --- PANEL 2: CUSTOMER DEMAND HISTOGRAM (WITH MEAN & MEDIAN) ---
     ax2 = axes[0, 1]
-    pallets_data = cust_df['total_pallets_unrounded'].dropna()
-    p_mean = pallets_data.mean()
-    p_median = pallets_data.median()
+    series_data = cust_df[actual_col].dropna()
+    s_mean = series_data.mean()
+    s_median = series_data.median()
 
-    counts, bins, patches = ax2.hist(pallets_data, bins=15, color='#60a5fa', edgecolor='#1e40af', alpha=0.85)
-    ax2.axvline(p_mean, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {p_mean:.2f} plts')
-    ax2.axvline(p_median, color=median_color, linestyle='-', linewidth=2, label=f'Median: {p_median:.2f} plts')
+    counts, bins, patches = ax2.hist(series_data, bins=15, color='#60a5fa', edgecolor='#1e40af', alpha=0.85)
+    ax2.axvline(s_mean, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {s_mean:.2f} {metric_unit}')
+    ax2.axvline(s_median, color=median_color, linestyle='-', linewidth=2, label=f'Median: {s_median:.2f} {metric_unit}')
 
-    ax2.set_title(f'Customer Total Pallet Consumption Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
-    ax2.set_xlabel('Total Pallets Consumed (Unrounded)', fontsize=10)
+    ax2.set_title(f'Customer {metric_name} Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+    ax2.set_xlabel(f'{metric_name} ({metric_unit})', fontsize=10)
     ax2.set_ylabel('Number of Customers', fontsize=10)
     ax2.legend(loc='upper right', frameon=True, fontsize=9)
     ax2.grid(axis='y', linestyle='--', alpha=0.3)
 
-    # --- PANEL 3: AVERAGE PALLETS PER ORDER DISTRIBUTION ---
+    # --- PANEL 3: REGIONAL / BOROUGH BREAKDOWN OR PALLETS PER ORDER ---
     ax3 = axes[1, 0]
-    ppo_data = cust_df['pallets_per_order'].dropna()
-    ppo_mean = ppo_data.mean()
-    ppo_median = ppo_data.median()
+    has_boroughs = 'city_borough' in cust_df.columns and cust_df['city_borough'].str.strip().replace('', np.nan).dropna().nunique() > 1
+    
+    if has_boroughs:
+        borough_stats = cust_df.groupby('city_borough')[actual_col].sum().sort_values(ascending=True)
+        # Filter top 10 regions
+        borough_stats = borough_stats.tail(10)
+        y_pos = np.arange(len(borough_stats))
+        bars_b = ax3.barh(y_pos, borough_stats.values, color='#0ea5e9', edgecolor='#0369a1', alpha=0.9)
+        ax3.set_yticks(y_pos)
+        ax3.set_yticklabels(borough_stats.index, fontsize=9)
+        ax3.set_xlabel(f'Total {metric_name} ({metric_unit})', fontsize=10)
+        ax3.set_title(f'{metric_name} by Region / Borough ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+        ax3.grid(axis='x', linestyle='--', alpha=0.3)
+        for b in bars_b:
+            w = b.get_width()
+            ax3.annotate(f'{w:,.1f}' if w >= 1000 else f'{w:.1f}', (w, b.get_y() + b.get_height()/2), ha='left', va='center', fontsize=8, xytext=(3, 0), textcoords='offset points')
+    else:
+        ppo_data = cust_df['pallets_per_order'].dropna() if 'pallets_per_order' in cust_df.columns else series_data
+        ppo_m = ppo_data.mean()
+        ppo_med = ppo_data.median()
+        ax3.hist(ppo_data, bins=15, color='#34d399', edgecolor='#065f46', alpha=0.85)
+        ax3.axvline(ppo_m, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {ppo_m:.2f} plts/ord')
+        ax3.axvline(ppo_med, color=median_color, linestyle='-', linewidth=2, label=f'Median: {ppo_med:.2f} plts/ord')
+        ax3.set_title(f'Average Pallets per Order Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+        ax3.set_xlabel('Pallets per Order (Average Order Size)', fontsize=10)
+        ax3.set_ylabel('Number of Customers', fontsize=10)
+        ax3.legend(loc='upper right', frameon=True, fontsize=9)
+        ax3.grid(axis='y', linestyle='--', alpha=0.3)
 
-    ax3.hist(ppo_data, bins=15, color='#34d399', edgecolor='#065f46', alpha=0.85)
-    ax3.axvline(ppo_mean, color=mean_color, linestyle='--', linewidth=2, label=f'Mean: {ppo_mean:.2f} plts/ord')
-    ax3.axvline(ppo_median, color=median_color, linestyle='-', linewidth=2, label=f'Median: {ppo_median:.2f} plts/ord')
-
-    ax3.set_title(f'Average Pallets per Order Distribution ({selected_day})', fontsize=12, fontweight='bold', pad=10)
-    ax3.set_xlabel('Pallets per Order (Average Order Size)', fontsize=10)
-    ax3.set_ylabel('Number of Customers', fontsize=10)
-    ax3.legend(loc='upper right', frameon=True, fontsize=9)
-    ax3.grid(axis='y', linestyle='--', alpha=0.3)
-
-    # --- PANEL 4: TOP 15 CUSTOMERS BY PALLET VOLUME (BAR CHART) ---
+    # --- PANEL 4: TOP 15 CUSTOMERS RANKING FOR CHOSEN METRIC ---
     ax4 = axes[1, 1]
-    top15 = cust_df.sort_values(by='total_pallets_unrounded', ascending=False).head(15)
+    top15 = cust_df.sort_values(by=actual_col, ascending=False).head(15)
     y_pos = np.arange(len(top15))
 
     names = [n[:22] + '..' if len(n) > 22 else n for n in top15['customer_name']]
-    bars_top = ax4.barh(y_pos, top15['total_pallets_unrounded'], color='#f59e0b', edgecolor='#b45309', alpha=0.9)
+    bars_top = ax4.barh(y_pos, top15[actual_col], color='#f59e0b', edgecolor='#b45309', alpha=0.9)
     ax4.set_yticks(y_pos)
     ax4.set_yticklabels(names, fontsize=8)
     ax4.invert_yaxis() # Top customer on top
-    ax4.set_xlabel('Total Pallets Consumed', fontsize=10)
-    ax4.set_title(f'Top 15 Customer Demand Ranking ({selected_day})', fontsize=12, fontweight='bold', pad=10)
+    ax4.set_xlabel(f'Total {metric_name} ({metric_unit})', fontsize=10)
+    ax4.set_title(f'Top 15 Customer Ranking by {metric_name} ({selected_day})', fontsize=12, fontweight='bold', pad=10)
     ax4.grid(axis='x', linestyle='--', alpha=0.3)
 
     for b in bars_top:
         w = b.get_width()
-        ax4.annotate(f'{w:.1f}', (w, b.get_y() + b.get_height()/2), ha='left', va='center', fontsize=8, xytext=(3, 0), textcoords='offset points')
+        ax4.annotate(f'{w:,.1f}' if w >= 1000 else f'{w:.1f}', (w, b.get_y() + b.get_height()/2), ha='left', va='center', fontsize=8, xytext=(3, 0), textcoords='offset points')
 
     return fig
 

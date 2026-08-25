@@ -88,9 +88,13 @@ def load_and_preprocess_orders(file_source, file_name=None, rounding_mode='ceil'
     chem_p = find_column(df.columns, ['chemical pallets'])
     weight_col = find_column(df.columns, ['weight', 'total weight nh', 'quantity', 'demand', 'pallets'])
 
-    food_vals = pd.to_numeric(df[food_p], errors='coerce').fillna(0.0) if food_p else 0.0
-    pet_vals = pd.to_numeric(df[pet_p], errors='coerce').fillna(0.0) if pet_p else 0.0
-    chem_vals = pd.to_numeric(df[chem_p], errors='coerce').fillna(0.0) if chem_p else 0.0
+    food_vals = pd.to_numeric(df[food_p], errors='coerce').fillna(0.0) if food_p else pd.Series(0.0, index=df.index)
+    pet_vals = pd.to_numeric(df[pet_p], errors='coerce').fillna(0.0) if pet_p else pd.Series(0.0, index=df.index)
+    chem_vals = pd.to_numeric(df[chem_p], errors='coerce').fillna(0.0) if chem_p else pd.Series(0.0, index=df.index)
+    
+    df['food_pallets'] = food_vals
+    df['pet_food_pallets'] = pet_vals
+    df['chemical_pallets'] = chem_vals
     
     has_pallet_cols = (food_p is not None or pet_p is not None or chem_p is not None)
     
@@ -103,6 +107,12 @@ def load_and_preprocess_orders(file_source, file_name=None, rounding_mode='ceil'
         order_pallets = pd.Series(1.0, index=df.index)
 
     df['order_pallets'] = order_pallets.clip(lower=0.0)
+
+    if weight_col:
+        raw_wt = df[weight_col].astype(str).str.replace(',', '').str.strip()
+        df['order_weight'] = pd.to_numeric(raw_wt, errors='coerce').fillna(0.0)
+    else:
+        df['order_weight'] = pd.Series(0.0, index=df.index)
 
     # Rounded pallets per order
     if rounding_mode == 'ceil':
@@ -143,7 +153,8 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
             'customer_id', 'customer_name', 'latitude', 'longitude',
             'address', 'city_borough', 'day_of_week',
             'total_pallets_unrounded', 'total_pallets_rounded',
-            'pallets_per_order', 'total_orders'
+            'total_food_pallets', 'total_pet_food_pallets', 'total_chemical_pallets',
+            'total_weight', 'pallets_per_order', 'total_orders'
         ])
         empty_df.attrs['validation_issues'] = df.attrs.get('validation_issues', [])
         return empty_df
@@ -151,6 +162,10 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
     grouped = filtered_df.groupby(['customer_id', 'customer_name', 'latitude', 'longitude']).agg(
         total_pallets_unrounded=('order_pallets', 'sum'),
         total_pallets_rounded=('order_pallets_rounded', 'sum'),
+        total_food_pallets=('food_pallets', 'sum') if 'food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        total_pet_food_pallets=('pet_food_pallets', 'sum') if 'pet_food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        total_chemical_pallets=('chemical_pallets', 'sum') if 'chemical_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        total_weight=('order_weight', 'sum') if 'order_weight' in filtered_df.columns else ('order_pallets', 'sum'),
         total_orders=('order_pallets', 'count'),
         address=('address_full', 'first'),
         city_borough=('city_borough', 'first')
@@ -158,6 +173,10 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
 
     grouped['total_pallets_unrounded'] = grouped['total_pallets_unrounded'].round(2)
     grouped['total_pallets_rounded'] = grouped['total_pallets_rounded'].astype(int)
+    grouped['total_food_pallets'] = grouped['total_food_pallets'].round(2)
+    grouped['total_pet_food_pallets'] = grouped['total_pet_food_pallets'].round(2)
+    grouped['total_chemical_pallets'] = grouped['total_chemical_pallets'].round(2)
+    grouped['total_weight'] = grouped['total_weight'].round(2)
     grouped['pallets_per_order'] = (grouped['total_pallets_unrounded'] / grouped['total_orders']).round(2)
     grouped['day_of_week'] = selected_day
 

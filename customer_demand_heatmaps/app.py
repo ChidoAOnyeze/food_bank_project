@@ -9,7 +9,7 @@ import base64
 from streamlit_folium import st_folium
 from validator import DataValidationError
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days
-from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS
+from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS, METRIC_UNITS
 from statistics_reporter import compute_detailed_statistics, generate_distribution_figure, generate_html_report
 
 st.set_page_config(
@@ -219,9 +219,19 @@ with tab_map:
         metric_options = {
             'total_pallets_unrounded': '1. Total Pallets Consumed (Unrounded)',
             'total_pallets_rounded': '2. Total Rounded Pallets (Per-Order Rounded)',
-            'pallets_per_order': '3. Average Pallets per Order',
-            'total_orders': '4. Total Number of Orders'
         }
+        if 'food_pallets' in raw_df.columns and raw_df['food_pallets'].sum() > 0:
+            metric_options['total_food_pallets'] = f"{len(metric_options)+1}. Food Pallets"
+        if 'pet_food_pallets' in raw_df.columns and raw_df['pet_food_pallets'].sum() > 0:
+            metric_options['total_pet_food_pallets'] = f"{len(metric_options)+1}. Pet Food Pallets"
+        if 'chemical_pallets' in raw_df.columns and raw_df['chemical_pallets'].sum() > 0:
+            metric_options['total_chemical_pallets'] = f"{len(metric_options)+1}. Chemical Pallets"
+        if 'order_weight' in raw_df.columns and raw_df['order_weight'].sum() > 0:
+            metric_options['total_weight'] = f"{len(metric_options)+1}. Total Weight (lbs)"
+            
+        metric_options['pallets_per_order'] = f"{len(metric_options)+1}. Average Pallets per Order"
+        metric_options['total_orders'] = f"{len(metric_options)+1}. Total Number of Orders"
+
         selected_metric_key = st.selectbox(
             "Select metric for heatmap intensity:",
             options=list(metric_options.keys()),
@@ -252,7 +262,7 @@ with tab_map:
 
         # Map display
         st.markdown("---")
-        st.subheader(f"Geographic Heatmap: {METRIC_LABELS[selected_metric_key]} ({selected_day})")
+        st.subheader(f"Geographic Heatmap: {METRIC_LABELS.get(selected_metric_key, selected_metric_key)} ({selected_day})")
 
         heatmap_map = create_demand_heatmap_map(
             cust_summary,
@@ -277,18 +287,13 @@ with tab_map:
         st.markdown("---")
         st.subheader(f"Customer Demand Data ({selected_day})")
 
-        display_df = cust_summary[[
-            'customer_name', 'customer_id', 'city_borough', 'address',
-            'total_pallets_unrounded', 'total_pallets_rounded',
-            'pallets_per_order', 'total_orders', 'latitude', 'longitude'
-        ]].copy()
+        display_cols = ['customer_name', 'customer_id', 'city_borough', 'address']
+        for c in ['total_pallets_unrounded', 'total_pallets_rounded', 'total_food_pallets', 'total_pet_food_pallets', 'total_chemical_pallets', 'total_weight', 'pallets_per_order', 'total_orders']:
+            if c in cust_summary.columns and (cust_summary[c] > 0).any():
+                display_cols.append(c)
+        display_cols.extend(['latitude', 'longitude'])
 
-        display_df.columns = [
-            'Customer Name', 'Customer ID', 'City/Borough', 'Address',
-            'Total Pallets (Unrounded)', 'Total Pallets (Rounded)',
-            'Pallets / Order', 'Total Orders', 'Latitude', 'Longitude'
-        ]
-
+        display_df = cust_summary[[c for c in display_cols if c in cust_summary.columns]].copy()
         st.dataframe(display_df)
 
         csv_buf = io.StringIO()
@@ -308,42 +313,90 @@ with tab_stats:
     st.markdown("### Comprehensive Statistical Distribution & Breakdown")
     st.markdown("Descriptive statistics including **Means, Medians, Standard Deviations, Quartiles**, and visual distribution charts.")
 
-    # Compute overall customer aggregation
-    all_cust_df = get_cached_customer_summary(raw_df, 'All Days', round_key)
+    # Control bar for Statistical Charts
+    stat_col_metric, stat_col_day = st.columns([1.2, 1])
+    
+    with stat_col_metric:
+        st.markdown("**Quantity / Metric to Graph:**")
+        stat_metric_options = {
+            'total_pallets_unrounded': '1. Total Pallets Consumed (Unrounded)',
+            'total_pallets_rounded': '2. Total Rounded Pallets (Per-Order Rounded)',
+        }
+        if 'food_pallets' in raw_df.columns and raw_df['food_pallets'].sum() > 0:
+            stat_metric_options['total_food_pallets'] = f"{len(stat_metric_options)+1}. Food Pallets"
+        if 'pet_food_pallets' in raw_df.columns and raw_df['pet_food_pallets'].sum() > 0:
+            stat_metric_options['total_pet_food_pallets'] = f"{len(stat_metric_options)+1}. Pet Food Pallets"
+        if 'chemical_pallets' in raw_df.columns and raw_df['chemical_pallets'].sum() > 0:
+            stat_metric_options['total_chemical_pallets'] = f"{len(stat_metric_options)+1}. Chemical Pallets"
+        if 'order_weight' in raw_df.columns and raw_df['order_weight'].sum() > 0:
+            stat_metric_options['total_weight'] = f"{len(stat_metric_options)+1}. Total Weight (lbs)"
+            
+        stat_metric_options['pallets_per_order'] = f"{len(stat_metric_options)+1}. Average Pallets per Order"
+        stat_metric_options['total_orders'] = f"{len(stat_metric_options)+1}. Total Number of Orders"
+
+        selected_stat_metric = st.selectbox(
+            "Select quantity for distribution graphs:",
+            options=list(stat_metric_options.keys()),
+            format_func=lambda k: stat_metric_options[k],
+            label_visibility="collapsed",
+            key="stats_metric_select"
+        )
+
+    with stat_col_day:
+        st.markdown("**Day of Week Filter for Stats:**")
+        selected_stat_day = st.selectbox(
+            "Filter stats by day:",
+            options=available_days,
+            index=0,
+            label_visibility="collapsed",
+            key="stats_day_select"
+        )
+
+    # Compute customer aggregation for selected day
+    all_cust_df = get_cached_customer_summary(raw_df, selected_stat_day, round_key)
     stats_df = get_cached_stats(all_cust_df)
 
-    # KPI summary for overall dataset
-    p_unround = all_cust_df['total_pallets_unrounded']
-    p_round = all_cust_df['total_pallets_rounded']
-    ppo_s = all_cust_df['pallets_per_order']
-    ord_s = all_cust_df['total_orders']
+    # Dynamic KPI summary for chosen metric
+    actual_col = selected_stat_metric if selected_stat_metric in all_cust_df.columns else 'total_pallets_unrounded'
+    metric_series = all_cust_df[actual_col].dropna().astype(float) if not all_cust_df.empty else pd.Series([0.0])
 
-    c1, c2, c3, c4 = st.columns(4)
+    m_mean = metric_series.mean()
+    m_med = metric_series.median()
+    m_std = metric_series.std() if len(metric_series) > 1 else 0.0
+    m_min = metric_series.min()
+    m_max = metric_series.max()
+    m_q25 = metric_series.quantile(0.25)
+    m_q75 = metric_series.quantile(0.75)
+    m_iqr = m_q75 - m_q25
+    m_sum = metric_series.sum()
+    
+    m_unit = METRIC_UNITS.get(selected_stat_metric, 'units')
+    m_title = METRIC_LABELS.get(selected_stat_metric, 'Quantity')
+
+    st.markdown(f"#### Summary Key Performance Indicators: **{m_title}** ({selected_stat_day})")
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown("**Unrounded Pallets**")
-        st.metric("Mean (Average)", f"{p_unround.mean():.2f} plts")
-        st.markdown(f"• **Median (50%):** `{p_unround.median():.2f} plts`  \n• **Std Dev:** `{p_unround.std():.2f}`  \n• **Total:** `{p_unround.sum():,.1f} plts`")
-
+        st.metric("Mean (Average)", f"{m_mean:,.2f} {m_unit}")
+        st.caption(f"**Total Sum:** `{m_sum:,.1f} {m_unit}`")
     with c2:
-        st.markdown("**Rounded Pallets**")
-        st.metric("Mean (Average)", f"{p_round.mean():.2f} plts")
-        st.markdown(f"• **Median (50%):** `{p_round.median():.2f} plts`  \n• **Std Dev:** `{p_round.std():.2f}`  \n• **Total:** `{int(p_round.sum()):,} plts`")
-
+        st.metric("Median (50%)", f"{m_med:,.2f} {m_unit}")
+        st.caption(f"**Standard Dev:** `{m_std:,.2f}`")
     with c3:
-        st.markdown("**Pallets per Order**")
-        st.metric("Mean (Average)", f"{ppo_s.mean():.2f} plts/ord")
-        st.markdown(f"• **Median (50%):** `{ppo_s.median():.2f} plts/ord`  \n• **Std Dev:** `{ppo_s.std():.2f}`  \n• **IQR:** `{ppo_s.quantile(0.75) - ppo_s.quantile(0.25):.2f}`")
-
+        st.metric("IQR (Q3 - Q1)", f"{m_iqr:,.2f} {m_unit}")
+        st.caption(f"**Q1:** `{m_q25:,.2f}` | **Q3:** `{m_q75:,.2f}`")
     with c4:
-        st.markdown("**Orders per Customer**")
-        st.metric("Mean (Average)", f"{ord_s.mean():.2f} orders")
-        st.markdown(f"• **Median (50%):** `{ord_s.median():.2f} orders`  \n• **Std Dev:** `{ord_s.std():.2f}`  \n• **Total Orders:** `{int(ord_s.sum()):,}`")
+        st.metric("Min Value", f"{m_min:,.2f} {m_unit}")
+        st.caption(f"**Active Customers:** `{len(metric_series):,}`")
+    with c5:
+        st.metric("Max Peak", f"{m_max:,.2f} {m_unit}")
+        total_ords = int(all_cust_df['total_orders'].sum()) if 'total_orders' in all_cust_df.columns else 0
+        st.caption(f"**Total Orders:** `{total_ords:,}`")
 
     st.markdown("---")
-    st.subheader("Distribution Bar Charts & Histograms")
+    st.subheader(f"Distribution Bar Charts & Histograms: {m_title}")
 
-    # Render Matplotlib Figure
-    dist_fig = generate_distribution_figure(all_cust_df, raw_df)
+    # Render Matplotlib Figure for the chosen quantity
+    dist_fig = generate_distribution_figure(all_cust_df, raw_df, selected_day=selected_stat_day, selected_metric=selected_stat_metric)
     st.pyplot(dist_fig)
 
     # Detailed statistics table
@@ -371,15 +424,15 @@ with tab_stats:
         img_buf = io.BytesIO()
         dist_fig.savefig(img_buf, format='png', dpi=200, bbox_inches='tight')
         st.download_button(
-            label="Download Distribution Charts (PNG)",
+            label=f"Download {m_title} Charts (PNG)",
             data=img_buf.getvalue(),
-            file_name=f"distribution_charts_{clean_label}.png",
+            file_name=f"distribution_{selected_stat_metric}_{clean_label}.png",
             mime="image/png"
         )
 
     with exp_col3:
         chart_b64 = base64.b64encode(img_buf.getvalue()).decode('utf-8')
-        html_content = generate_html_report(all_cust_df, stats_df, chart_b64, None, file_label or "Dataset")
+        html_content = generate_html_report(all_cust_df, stats_df, chart_b64, None, f"{file_label or 'Dataset'} - {m_title}")
         st.download_button(
             label="Download Visual HTML Report",
             data=html_content.encode('utf-8'),
