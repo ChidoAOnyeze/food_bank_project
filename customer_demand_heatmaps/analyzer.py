@@ -18,23 +18,34 @@ def find_column(df_columns, candidates):
     return None
 
 def extract_date_from_filename(filename):
-    base = os.path.basename(filename)
-    m = re.search(r'(\d{1,2})[._-](\d{1,2})[._-](\d{2,4})', base)
-    if m:
-        m1, d1, y1 = m.groups()
-        if len(y1) == 2:
-            y1 = "20" + y1
-        return f"{m1}/{d1}/{y1}"
+    if not filename or not isinstance(filename, (str, bytes, os.PathLike)):
+        return None
+    try:
+        base = os.path.basename(str(filename))
+        m = re.search(r'(\d{1,2})[._-](\d{1,2})[._-](\d{2,4})', base)
+        if m:
+            m1, d1, y1 = m.groups()
+            if len(y1) == 2:
+                y1 = "20" + y1
+            return f"{m1}/{d1}/{y1}"
+    except Exception:
+        return None
     return None
 
-def load_and_preprocess_orders(file_source, rounding_mode='ceil', raise_on_fatal=True):
+def load_and_preprocess_orders(file_source, file_name=None, rounding_mode='ceil', raise_on_fatal=True):
     """
     Loads order/routing CSV file, performs comprehensive cell-level validation,
     pinpoints and logs bad inputs with row numbers, and computes customer demands.
     
     rounding_mode: 'ceil' (math.ceil) or 'round' (round to nearest int).
     """
-    file_name = file_source if isinstance(file_source, str) else getattr(file_source, 'name', 'uploaded_file.csv')
+    if file_name is None:
+        if isinstance(file_source, str):
+            file_name = file_source
+        else:
+            file_name = getattr(file_source, 'name', None) or 'uploaded_file.csv'
+    elif not isinstance(file_name, str):
+        file_name = str(file_name)
 
     # 1. Run deep validation & diagnostics
     is_valid, fatal_errors, row_issues, cleaned_df = inspect_and_diagnose_csv(file_source, raise_on_fatal=raise_on_fatal)

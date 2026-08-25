@@ -107,10 +107,10 @@ class OSRMClient:
             if routes and "geometry" in routes[0]:
                 coords = decode_polyline(routes[0]["geometry"], precision=6)
                 if coords and len(coords) >= 2:
-                    print(f"✅ [OSRM API Success] Received {len(coords)} road curve points for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f})")
+                    print(f"[OSRM API] Received {len(coords)} road curve points for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f})")
                     return coords
         except Exception as e:
-            print(f"⚠️ [OSRM API Warning] Leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}): {e}")
+            print(f"[OSRM API Warning] Leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}): {e}")
         return [p1, p2]
 
     def fetch_route_geometry(self, points, timeout: float = None):
@@ -128,7 +128,7 @@ class OSRMClient:
                 if coords and len(coords) >= 2:
                     return coords
         except Exception as e:
-            print(f"⚠️ [OSRM Route Error]: {e}")
+            print(f"[OSRM API Error] Route query failed: {e}")
         return points
 
     def fetch_table(self, locations, annotations: str = "distance,duration", timeout: float = 10.0):
@@ -165,7 +165,7 @@ class OSRMClient:
                                 matrix[i][j] = int(geodesic(locations[i], locations[j]).meters * 1.5)
                     return matrix
             except Exception as e:
-                print(f"⚠️ [OSRM Table Error]: {e}")
+                print(f"[OSRM API Error] Table query failed: {e}")
 
         # Fallback pairwise or chunked
         for i in range(num_nodes):

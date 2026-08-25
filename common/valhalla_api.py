@@ -117,7 +117,7 @@ class ValhallaClient:
         if p1 == p2:
             return [p1, p2]
 
-        print(f"📡 [Valhalla API Call] Cache miss for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}). Querying Valhalla route API...")
+        print(f"[Valhalla API] Cache miss for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}). Querying Valhalla route API...")
         for costing in costing_list:
             try:
                 data = self.fetch_route([p1, p2], costing=costing, timeout=timeout)
@@ -125,7 +125,7 @@ class ValhallaClient:
                 if legs and "shape" in legs[0]:
                     coords = decode_polyline(legs[0]["shape"], precision=6)
                     if coords and len(coords) >= 2:
-                        print(f"✅ [Valhalla API Success] Received {len(coords)} points for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f})")
+                        print(f"[Valhalla API] Received {len(coords)} points for leg ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f})")
                         return coords
             except Exception:
                 continue
@@ -140,7 +140,7 @@ class ValhallaClient:
         if len(sub_seq) < 2:
             return results
 
-        print(f"📡 [Valhalla API Call] Batch querying road geometry for {len(sub_seq)} stops [({sub_seq[0][0]:.4f}, {sub_seq[0][1]:.4f}) ... ({sub_seq[-1][0]:.4f}, {sub_seq[-1][1]:.4f})]...")
+        print(f"[Valhalla API] Batch querying road geometry for {len(sub_seq)} stops [({sub_seq[0][0]:.4f}, {sub_seq[0][1]:.4f}) ... ({sub_seq[-1][0]:.4f}, {sub_seq[-1][1]:.4f})]...")
         try:
             data = self.fetch_route(sub_seq, costing=costing, timeout=timeout)
             legs = data.get("trip", {}).get("legs", [])
@@ -153,9 +153,9 @@ class ValhallaClient:
                         coords = decode_polyline(leg["shape"], precision=6)
                         if len(coords) > 2:
                             results[k] = coords
-                print(f"✅ [Valhalla API Success] Batch downloaded geometry for {len(results)}/{len(sub_seq)-1} route legs.")
+                print(f"[Valhalla API] Batch downloaded geometry for {len(results)}/{len(sub_seq)-1} route legs.")
         except Exception as e:
-            print(f"⚠️ [Valhalla API Warning] Batch query error: {e}")
+            print(f"[Valhalla API Warning] Batch query error: {e}")
 
         return results
 
@@ -252,7 +252,7 @@ class ValhallaClient:
                     api_fail_count += f_count
                     if not success:
                         error_msg = "Valhalla API permanently failed after all retries and halving. Using geodesic fallback for remaining pairs."
-                        print(f"⚠️ {error_msg}")
+                        print(f"[Valhalla API Warning] {error_msg}")
                         if on_error:
                             on_error(error_msg)
                         else:

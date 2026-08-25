@@ -1,5 +1,6 @@
 import os
 import sys
+import io
 import json
 import time
 import math
@@ -215,6 +216,91 @@ def generate_cross_exchange_moves(routes, truck_names, node_names, touched_route
     return moves
 
 
+def load_default_trucks_dataframe():
+    possible_paths = [
+        "dataset/trucks.csv",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset", "trucks.csv"),
+        os.path.join(os.path.dirname(__file__), "..", "dataset", "trucks.csv"),
+        os.path.join(os.path.dirname(__file__), "trucks.csv"),
+        "trucks.csv"
+    ]
+    for p in possible_paths:
+        if os.path.exists(p):
+            try:
+                df_t = pd.read_csv(p)
+                df_t.columns = df_t.columns.astype(str).str.strip()
+                cols_lower = [c.lower() for c in df_t.columns]
+                has_veh = any(c in cols_lower for c in ['vehicle', 'truck', 'truck name', 'name', 'rt'])
+                has_cap = any(c in cols_lower for c in ['pallet capacity', 'pallet_capacity', 'capacity', 'pallets', 'cap'])
+                if has_veh and has_cap:
+                    return df_t
+            except Exception:
+                continue
+    return None
+
+
+def assign_trucks_to_routes(tdf, unique_rts, route_loads):
+    tdf = tdf.copy()
+    tdf.columns = tdf.columns.astype(str).str.strip()
+    cols_map = {str(c).strip().lower(): c for c in tdf.columns}
+    
+    veh_col = None
+    for cand in ['vehicle', 'truck', 'truck name', 'name', 'rt']:
+        if cand in cols_map:
+            veh_col = cols_map[cand]
+            break
+            
+    cap_col = None
+    for cand in ['pallet capacity', 'pallet_capacity', 'capacity', 'pallets', 'cap']:
+        if cand in cols_map:
+            cap_col = cols_map[cand]
+            break
+            
+    if veh_col and cap_col:
+        tdf['Pallet Capacity'] = pd.to_numeric(tdf[cap_col], errors='coerce').fillna(25).astype(int)
+        tdf['Vehicle'] = tdf[veh_col].astype(str).str.strip()
+        available_trucks = tdf[['Vehicle', 'Pallet Capacity']].to_dict('records')
+        
+        assigned_names = []
+        assigned_caps = []
+        
+        # Sort routes by load descending (Largest loads first)
+        rts_by_load = sorted(unique_rts, key=lambda r: int(route_loads.get(r, 0)), reverse=True)
+        assignment_map = {}
+        
+        for rt in rts_by_load:
+            load = int(route_loads.get(rt, 0))
+            # Best-fit: find smallest available vehicle that fits this load
+            fitting_indices = [i for i, t in enumerate(available_trucks) if int(t['Pallet Capacity']) >= load]
+            if fitting_indices:
+                best_idx = min(fitting_indices, key=lambda i: int(available_trucks[i]['Pallet Capacity']))
+                chosen_truck = available_trucks.pop(best_idx)
+                assignment_map[rt] = (str(chosen_truck['Vehicle']), int(chosen_truck['Pallet Capacity']))
+            elif available_trucks:
+                # Fallback to largest remaining vehicle in fleet
+                best_idx = max(range(len(available_trucks)), key=lambda i: int(available_trucks[i]['Pallet Capacity']))
+                chosen_truck = available_trucks.pop(best_idx)
+                assignment_map[rt] = (str(chosen_truck['Vehicle']), int(chosen_truck['Pallet Capacity']))
+            else:
+                assignment_map[rt] = (f"Truck_{rt}", 25)
+                
+        for rt in unique_rts:
+            assigned_names.append(assignment_map[rt][0])
+            assigned_caps.append(assignment_map[rt][1])
+            
+        return pd.DataFrame({
+            "Rt": unique_rts,
+            "Vehicle Name": assigned_names,
+            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
+            "Capacity in Pallets": assigned_caps
+        })
+    else:
+        return pd.DataFrame({
+            "Rt": unique_rts,
+            "Vehicle Name": unique_rts,
+            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
+            "Capacity in Pallets": [25] * len(unique_rts)
+        })
 
 
 def get_valhalla_distance_matrix(locations):
@@ -274,8 +360,8 @@ def fetch_single_leg_geometry(p1, p2):
     if coords and len(coords) >= 2:
         return coords
     
-    # If Valhalla is timing out or busy, instantly fallback to fast OSRM (0.3s)
-    print(f"⚡ [Fast OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
+    # If Valhalla is timing out or busy, instantly fallback to fast OSRM
+    print(f"[OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
     osrm_coords = fetch_osrm_leg_geometry(p1, p2)
     if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
         return osrm_coords
@@ -337,7 +423,7 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
     if not sub_seqs_to_fetch:
         return
 
-    print(f"🔄 [Geometry Prefetch] Found {len(sub_seqs_to_fetch)} uncached route sub-sequences. Fetching from Valhalla in background (polite 2-worker pool)...")
+    print(f"[Geometry Prefetch] Found {len(sub_seqs_to_fetch)} uncached route sub-sequences. Fetching from routing API...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         batch_results = list(executor.map(fetch_subseq_geometry_batch, sub_seqs_to_fetch))
         
@@ -348,7 +434,7 @@ def prefetch_and_cache_routes_geometry(routes_list, locations):
                 geom_cache[k] = coords
                 new_cached_count += 1
                 
-    print(f"💾 [Geometry Cache] Cached {new_cached_count} new road leg geometries to memory.")
+    print(f"[Geometry Cache] Cached {new_cached_count} new road leg geometries to memory.")
     save_geom_cache_async()
 
 def get_road_path(p1, p2, use_road_geometry=True):
@@ -382,23 +468,23 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
     def worker():
         # 1. First Priority: Pre-fetch Full OR-Tools improved routes
         if improved_routes:
-            print("🚀 [Background Worker] Pre-fetching road geometry for Full OR-Tools Fleet Solution...")
+            print("[Background Worker] Pre-fetching road geometry for full fleet solution...")
             try:
                 prefetch_and_cache_routes_geometry(improved_routes, locations)
             except Exception as e:
-                print(f"⚠️ [Background Worker Error] Full OR-Tools geometry: {e}")
+                print(f"[Background Worker Warning] Full fleet geometry: {e}")
                 
         # 2. Second Priority: Pre-fetch top candidate moves
         if top_moves:
             total_to_fetch = min(limit, len(top_moves))
-            print(f"🚀 [Background Worker] Pre-fetching road geometry for top {total_to_fetch} candidate moves...")
+            print(f"[Background Worker] Pre-fetching road geometry for top {total_to_fetch} candidate moves...")
             for m_idx, move in enumerate(top_moves[:limit]):
                 try:
                     candidate_routes = move[3]
                     prefetch_and_cache_routes_geometry(candidate_routes, locations)
                     time.sleep(0.15)
                 except Exception as e:
-                    print(f"⚠️ [Background Worker Error] Move {m_idx}: {e}")
+                    print(f"[Background Worker Warning] Move {m_idx}: {e}")
         save_geom_cache_async()
 
     t = threading.Thread(target=worker, daemon=True)
@@ -691,17 +777,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Route Optimization & GUI")
+st.title("Fleet Route Optimization & Evaluation Platform")
 
 st.markdown("""
-Upload a CSV file containing your deliveries. 
-**Required columns**: `Name`, `Longitude`, `Latitude`, `Rt`, `seq`, `Food Pallets`, `Pet Food Pallets`, `Chemical Pallets`.
-Optional columns: `Weight`
-*The Depot location can be configured in the sidebar.*
+Upload a CSV file containing scheduled deliveries to inspect baseline routes, evaluate candidate improvements, 
+and execute multi-objective CVRP solvers.
 """)
 
 st.sidebar.header("Depot Location")
-# HARDCODE DEFAULT DEPOT LOCATION HERE:
+# Default Depot Location (Food Bank for NYC)
 default_depot_lat = 40.80594755
 default_depot_lng = -73.87299938
 
@@ -710,11 +794,10 @@ depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, 
 
 st.sidebar.header("Objective Weights")
 st.sidebar.markdown(
-    "Adjust these to see how they impact routing! Setting them to 0 focuses on pure distance (avoiding crossings). "
-    "Setting them > 0 balances the routes but may result in visual crossings."
+    "Configure objective weights to balance route makespan and customer arrival latency against total fleet distance."
 )
-makespan_ui = st.sidebar.slider("Makespan Penalty (Balance Routes)", min_value=1, max_value=5, value=1, step=1)
-latency_ui = st.sidebar.slider("Latency Penalty (Prioritize Early Arrivals)", min_value=1, max_value=5, value=1, step=1)
+makespan_ui = st.sidebar.slider("Makespan Penalty (Route Balance)", min_value=1, max_value=5, value=1, step=1)
+latency_ui = st.sidebar.slider("Latency Penalty (Early Arrivals)", min_value=1, max_value=5, value=1, step=1)
 
 makespan_weight = makespan_ui * 10
 latency_weight = latency_ui * 10
@@ -723,18 +806,17 @@ st.sidebar.header("Map Visualization")
 render_street_paths = st.sidebar.toggle(
     "Render True Road Paths",
     value=True,
-    help="Toggle ON to render turn-by-turn road curves and bridge navigation. Toggle OFF for fast straight-line spider routes between stops (app_valhalla mode)."
+    help="Toggle ON to render turn-by-turn street network paths. Toggle OFF for straight-line connections."
 )
 
-st.sidebar.header("Testing")
-test_mode = st.sidebar.toggle("Test Mode (Limit to 200 improvements)", value=False)
+st.sidebar.header("Execution Mode")
+test_mode = st.sidebar.toggle("Test Mode (Limit search space)", value=False)
 allow_overcapacity = st.sidebar.toggle("Allow Over-Capacity (Soft Constraint)", value=False)
 
 
-uploaded_file = st.file_uploader("Upload Stops CSV", type=["csv"])
+uploaded_file = st.file_uploader("Upload Delivery Stops CSV", type=["csv"])
 
 if uploaded_file is not None:
-    import io
     file_bytes = uploaded_file.getvalue()
     file_hash = hash(file_bytes)
     
@@ -754,10 +836,11 @@ if uploaded_file is not None:
         
     df = pd.read_csv(io.BytesIO(file_bytes))
     df.columns = df.columns.astype(str).str.strip()
-
+    orig_columns = list(df.columns)
+    had_upper_seq = ('Seq' in df.columns and 'seq' not in df.columns)
     
     # Safely handle 'Seq' vs 'seq' column casing
-    if 'Seq' in df.columns and 'seq' not in df.columns:
+    if had_upper_seq:
         df = df.rename(columns={'Seq': 'seq'})
         
     with st.expander("View Raw Input Data", expanded=False):
@@ -770,7 +853,8 @@ if uploaded_file is not None:
             f"Missing required columns: {missing_cols}. Found columns: {list(df.columns)}"
         )
     else:
-        # Pre-process: group by location to merge deliveries
+        # Pre-process: attach unique stop key to preserve all original columns and rows on export
+        df['_stop_key'] = df['Latitude'].astype(str) + '_' + df['Longitude'].astype(str) + '_' + df['Name'].astype(str) + '_' + df['Rt'].astype(str)
             
         agg_funcs = {
             'Food Pallets': 'sum',
@@ -782,7 +866,7 @@ if uploaded_file is not None:
             agg_funcs['Weight'] = 'sum'
             
         # Group by Latitude, Longitude, Name, AND Rt to ensure separate truck deliveries to the same customer are NOT merged!
-        grouped = df.groupby(['Latitude', 'Longitude', 'Name', 'Rt'], as_index=False).agg(agg_funcs)
+        grouped = df.groupby(['Latitude', 'Longitude', 'Name', 'Rt', '_stop_key'], as_index=False).agg(agg_funcs)
         
         # Calculate Pallets using math.ceil
         def calc_pallets(row):
@@ -795,72 +879,24 @@ if uploaded_file is not None:
         
         # Determine Depot from the sidebar inputs
         depot_coords = (depot_lat, depot_lng)
-        
+
         with st.expander("Trucks Configuration", expanded=False):
             unique_rts = sorted(grouped['Rt'].dropna().unique())
             route_loads = grouped.groupby('Rt')['Total Pallets'].sum()
             
-            uploaded_trucks = st.file_uploader("Upload Trucks CSV (Optional)", type=["csv"], key="truck_uploader")
+            uploaded_trucks = st.file_uploader("Upload Custom Trucks CSV (Defaults to dataset/trucks.csv)", type=["csv"], key="truck_uploader")
             
+            trucks_source_df = None
             if uploaded_trucks is not None:
                 try:
-                    tdf = pd.read_csv(uploaded_trucks)
-                    tdf.columns = tdf.columns.astype(str).str.strip()
-                    if 'Vehicle' in tdf.columns and 'Pallet Capacity' in tdf.columns:
-                        # Sort by capacity DESCENDING to assign the absolute largest trucks to the largest loads, maximizing slack
-                        tdf = tdf.sort_values(by='Pallet Capacity', ascending=False)
-                        available_trucks = tdf.to_dict('records')
-                        
-                        assigned_names = []
-                        assigned_caps = []
-                        
-                        rts_by_load = sorted(unique_rts, key=lambda r: int(route_loads.get(r, 0)), reverse=True)
-                        assignment_map = {}
-                        
-                        for rt in rts_by_load:
-                            load = int(route_loads.get(rt, 0))
-                            assigned = False
-                            for i, t in enumerate(available_trucks):
-                                if int(t['Pallet Capacity']) >= load:
-                                    assignment_map[rt] = (t['Vehicle'], int(t['Pallet Capacity']))
-                                    available_trucks.pop(i)
-                                    assigned = True
-                                    break
-                            
-                            if not assigned:
-                                if available_trucks:
-                                    # Pop index 0 to get the largest remaining truck (since the list is sorted descending)
-                                    t = available_trucks.pop(0)
-                                    assignment_map[rt] = (t['Vehicle'], int(t['Pallet Capacity']))
-                                else:
-                                    assignment_map[rt] = (f"Unassigned_Truck_for_{rt}", 25)
-                                    
-                        for rt in unique_rts:
-                            assigned_names.append(assignment_map[rt][0])
-                            assigned_caps.append(assignment_map[rt][1])
-                            
-                        truck_df = pd.DataFrame({
-                            "Rt": unique_rts,
-                            "Vehicle Name": assigned_names,
-                            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
-                            "Capacity in Pallets": assigned_caps
-                        })
-                    else:
-                        st.error("Trucks CSV must contain 'Vehicle' and 'Pallet Capacity' columns.")
-                        truck_df = pd.DataFrame({
-                            "Rt": unique_rts,
-                            "Vehicle Name": unique_rts,
-                            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
-                            "Capacity in Pallets": [25] * len(unique_rts)
-                        })
+                    trucks_source_df = pd.read_csv(uploaded_trucks)
                 except Exception as e:
-                    st.error(f"Error reading trucks CSV: {e}")
-                    truck_df = pd.DataFrame({
-                        "Rt": unique_rts,
-                        "Vehicle Name": unique_rts,
-                        "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
-                        "Capacity in Pallets": [25] * len(unique_rts)
-                    })
+                    st.error(f"Error reading uploaded trucks CSV: {e}")
+            else:
+                trucks_source_df = load_default_trucks_dataframe()
+
+            if trucks_source_df is not None:
+                truck_df = assign_trucks_to_routes(trucks_source_df, unique_rts, route_loads)
             else:
                 truck_df = pd.DataFrame({
                     "Rt": unique_rts,
@@ -868,13 +904,10 @@ if uploaded_file is not None:
                     "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
                     "Capacity in Pallets": [25] * len(unique_rts)
                 })
-            
-
 
             # Sort the truck list by capacity descending, then by initial load descending
             truck_df = truck_df.sort_values(by=["Capacity in Pallets", "Initial Load"], ascending=[False, False]).reset_index(drop=True)
 
-            
             st.markdown("Adjust the assignments and capacities:")
             edited_trucks = st.data_editor(truck_df, num_rows="dynamic", disabled=["Initial Load", "Rt"])
 
@@ -1386,25 +1419,32 @@ if uploaded_file is not None:
             st_folium(m, width=900, height=600, returned_objects=[])
             
             st.markdown("### Export Updated Routes")
-            export_rows = []
+            
+            # Map each optimized stop back to its new route and sequence number
+            stop_to_new_rt = {}
+            stop_to_new_seq = {}
             for t_idx, route in enumerate(initial_routes):
                 truck_name = truck_names[t_idx]
                 for seq_idx, node in enumerate(route):
-                    lat, lng = locations[node]
-                    name = node_names[node]
-                    
-                    match = grouped[(grouped['Latitude'] == lat) & (grouped['Longitude'] == lng) & (grouped['Name'] == name)]
-                    if not match.empty:
-                        row_dict = match.iloc[0].to_dict()
-                        row_dict['Rt'] = truck_name
-                        row_dict['seq'] = seq_idx + 1
-                        export_rows.append(row_dict)
-                    else:
-                        export_rows.append({
-                            "Name": name, "Latitude": lat, "Longitude": lng, "Rt": truck_name, "seq": seq_idx + 1
-                        })
-                        
-            export_df = pd.DataFrame(export_rows)
+                    # Node index corresponds to grouped index (0 is depot, 1..N are stops)
+                    if 1 <= node <= len(grouped):
+                        stop_k = grouped.iloc[node - 1]['_stop_key']
+                        stop_to_new_rt[stop_k] = truck_name
+                        stop_to_new_seq[stop_k] = seq_idx + 1
+
+            # Build export dataframe preserving 100% of original rows and columns
+            export_df = df.copy()
+            if '_stop_key' in export_df.columns:
+                export_df['Rt'] = export_df['_stop_key'].map(stop_to_new_rt).fillna(export_df['Rt'])
+                export_df['seq'] = export_df['_stop_key'].map(stop_to_new_seq).fillna(export_df['seq'])
+                export_df = export_df.sort_values(by=['Rt', 'seq']).drop(columns=['_stop_key'])
+                
+            if had_upper_seq and 'seq' in export_df.columns:
+                export_df = export_df.rename(columns={'seq': 'Seq'})
+                
+            # Guarantee exact original columns and ordering
+            final_export_cols = [c for c in orig_columns if c in export_df.columns]
+            export_df = export_df[final_export_cols]
             csv_str = export_df.to_csv(index=False)
 
             st.markdown("---")

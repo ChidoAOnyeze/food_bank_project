@@ -10,7 +10,7 @@ from streamlit_folium import st_folium
 from validator import DataValidationError
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days
 from heatmap_generator import create_demand_heatmap_map, METRIC_LABELS
-from statistics_reporter import compute_detailed_statistics, generate_distribution_figure
+from statistics_reporter import compute_detailed_statistics, generate_distribution_figure, generate_html_report
 
 st.set_page_config(
     page_title="Customer Demand & Order Analytics",
@@ -57,11 +57,11 @@ st.markdown("""
 # --- CACHED HELPER FUNCTIONS FOR INSTANT DAY SWITCHING ---
 @st.cache_data(show_spinner="Loading and validating orders dataset...", ttl=3600)
 def get_cached_orders_from_bytes(file_bytes, file_name, rounding_mode):
-    return load_and_preprocess_orders(io.BytesIO(file_bytes), rounding_mode=rounding_mode, raise_on_fatal=False)
+    return load_and_preprocess_orders(io.BytesIO(file_bytes), file_name=file_name, rounding_mode=rounding_mode, raise_on_fatal=False)
 
 @st.cache_data(show_spinner="Loading and validating orders dataset...", ttl=3600)
 def get_cached_orders_from_path(file_path, rounding_mode):
-    return load_and_preprocess_orders(file_path, rounding_mode=rounding_mode, raise_on_fatal=False)
+    return load_and_preprocess_orders(file_path, file_name=file_path, rounding_mode=rounding_mode, raise_on_fatal=False)
 
 @st.cache_data(show_spinner=False)
 def get_cached_customer_summary(df, selected_day, rounding_mode):
@@ -353,6 +353,7 @@ with tab_stats:
 
     # Export Buttons
     st.markdown("#### Export Statistical Reports")
+    clean_label = os.path.splitext(os.path.basename(file_label or "dataset"))[0]
     exp_col1, exp_col2, exp_col3 = st.columns(3)
 
     with exp_col1:
@@ -361,7 +362,7 @@ with tab_stats:
         st.download_button(
             label="Download Statistical Summary CSV",
             data=stat_csv_buf.getvalue().encode('utf-8'),
-            file_name=f"statistical_summary_{file_label.split('.')[0]}.csv",
+            file_name=f"statistical_summary_{clean_label}.csv",
             mime="text/csv",
             type="primary"
         )
@@ -372,25 +373,16 @@ with tab_stats:
         st.download_button(
             label="Download Distribution Charts (PNG)",
             data=img_buf.getvalue(),
-            file_name=f"distribution_charts_{file_label.split('.')[0]}.png",
+            file_name=f"distribution_charts_{clean_label}.png",
             mime="image/png"
         )
 
     with exp_col3:
-        # Generate standalone HTML
-        html_buf = io.BytesIO()
         chart_b64 = base64.b64encode(img_buf.getvalue()).decode('utf-8')
-        from statistics_reporter import generate_html_report
-        temp_html_path = "temp_export_report.html"
-        generate_html_report(all_cust_df, stats_df, chart_b64, temp_html_path, file_label)
-        with open(temp_html_path, "r", encoding="utf-8") as f:
-            html_data = f.read().encode('utf-8')
-        if os.path.exists(temp_html_path):
-            os.remove(temp_html_path)
-
+        html_content = generate_html_report(all_cust_df, stats_df, chart_b64, None, file_label or "Dataset")
         st.download_button(
             label="Download Visual HTML Report",
-            data=html_data,
-            file_name=f"distribution_report_{file_label.split('.')[0]}.html",
+            data=html_content.encode('utf-8'),
+            file_name=f"distribution_report_{clean_label}.html",
             mime="text/html"
         )

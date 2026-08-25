@@ -1,10 +1,10 @@
-# 🗺️ Customer Demand & Order Heatmap Analysis Tool
+# Customer Demand & Order Heatmap Analysis Tool
 
 An interactive visualization tool to analyze geographic customer demand patterns, order densities, and pallet consumption across days of the week.
 
 ---
 
-## 📌 Features
+## Features
 
 1. **Four Customer Metrics Computed per Location:**
    * **1. Total Pallets Consumed (Unrounded):** Exact float sum of pallet demands ($\sum \text{pallets}_i$).
@@ -24,7 +24,7 @@ An interactive visualization tool to analyze geographic customer demand patterns
 
 ---
 
-## 🚀 Running the Streamlit Web Application
+## Running the Streamlit Web Application
 
 Launch the interactive web interface:
 
@@ -34,7 +34,7 @@ streamlit run customer_demand_heatmaps/app.py
 
 ---
 
-## 💻 Running the Command-Line Interface (CLI)
+## Running the Command-Line Interface (CLI)
 
 Generate static HTML heatmaps and aggregated CSV summaries directly from the terminal:
 

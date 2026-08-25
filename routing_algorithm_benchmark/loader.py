@@ -55,13 +55,18 @@ def extract_date_from_filename(filename):
     """
     Extracts date if embedded in filename (e.g. anon_routed_orders_5_28_26.csv -> 5/28/2026).
     """
-    base = os.path.basename(filename)
-    m = re.search(r'(\d{1,2})[._-](\d{1,2})[._-](\d{2,4})', base)
-    if m:
-        m1, d1, y1 = m.groups()
-        if len(y1) == 2:
-            y1 = "20" + y1
-        return f"{m1}/{d1}/{y1}"
+    if not filename or not isinstance(filename, (str, bytes, os.PathLike)):
+        return "N/A"
+    try:
+        base = os.path.basename(str(filename))
+        m = re.search(r'(\d{1,2})[._-](\d{1,2})[._-](\d{2,4})', base)
+        if m:
+            m1, d1, y1 = m.groups()
+            if len(y1) == 2:
+                y1 = "20" + y1
+            return f"{m1}/{d1}/{y1}"
+    except Exception:
+        return "N/A"
     return "N/A"
 
 
