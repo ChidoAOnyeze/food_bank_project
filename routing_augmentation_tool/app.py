@@ -1153,10 +1153,14 @@ if uploaded_file is not None:
 
             st.subheader("Route Visualization")
             
-            # Format Options: Full Fleet Optimization + Individual high-impact moves
+            # Format Options:
+            # 1. "Current Routes" (at the very top)
+            # 2. Individual Candidate Moves (Move 1, Move 2, ...)
+            # 3. "Full Fleet Optimization" (at the very bottom)
+            current_routes_label = "Current Routes"
             full_ortools_label = f"Full Fleet Optimization (OR-Tools Guided Local Search: {total_pct:.1f}% overall improvement)" if not had_penalties else "Full Fleet Optimization (OR-Tools Guided Local Search)"
             
-            options = [full_ortools_label]
+            options = [current_routes_label]
             if top_moves:
                 for i, m in enumerate(top_moves):
                     if not had_penalties:
@@ -1164,6 +1168,7 @@ if uploaded_file is not None:
                         options.append(f"Move {i+1} (Improves by {pct_m:.1f}%): {m[2]}")
                     else:
                         options.append(f"Move {i+1} (Fixes Capacity Penalty): {m[2]}")
+            options.append(full_ortools_label)
                         
             selected_option = st.selectbox("Visualize a specific route improvement:", options)
 
@@ -1188,7 +1193,69 @@ if uploaded_file is not None:
                 added = [leg for leg in legs_new if leg not in set_orig]
                 return common, removed, added
 
-            if selected_option == full_ortools_label:
+            if selected_option == current_routes_label:
+                # Map each node to its route and sequence position
+                node_to_route_info = {}
+                for route_idx, route in enumerate(initial_routes):
+                    for seq_idx, n in enumerate(route):
+                        node_to_route_info[n] = (route_idx, seq_idx + 1)
+
+                # Add All Markers with Numbered Badges
+                for idx, (lat, lng) in enumerate(locations):
+                    if idx == 0:
+                        folium.Marker(
+                            [lat, lng],
+                            tooltip="Depot (Start & End)",
+                            popup="Depot (Start & End)",
+                            icon=folium.DivIcon(
+                                html='''<div style="background-color: #0f172a; color: #facc15; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.6);"></div>''',
+                                icon_size=(28, 28),
+                                icon_anchor=(14, 14)
+                            )
+                        ).add_to(m)
+                    else:
+                        demand = demands[idx]
+                        orig_route, seq_num = node_to_route_info.get(idx, (0, 1))
+                        marker_color = colors[orig_route % len(colors)]
+                        tooltip_text = f"{node_names[idx]} | Stop #{seq_num} on Route {truck_names[orig_route]} | Pallets: {demand}"
+                        folium.Marker(
+                            [lat, lng],
+                            tooltip=tooltip_text,
+                            popup=tooltip_text,
+                            icon=folium.DivIcon(
+                                html=f'''<div style="background-color: {marker_color}; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">{seq_num}</div>''',
+                                icon_size=(24, 24),
+                                icon_anchor=(12, 12)
+                            )
+                        ).add_to(m)
+
+                pending_geom_legs = 0
+
+                # Plot All Current Routes (Solid, Real Road Paths)
+                for route_idx, route in enumerate(initial_routes):
+                    if not route:
+                        continue
+                    stop_sequence = [locations[0]] + [locations[n] for n in route] + [locations[0]]
+                    color = colors[route_idx % len(colors)]
+                    
+                    for l_i in range(len(stop_sequence) - 1):
+                        p1, p2 = stop_sequence[l_i], stop_sequence[l_i + 1]
+                        leg_coords = get_road_path(p1, p2, use_road_geometry=render_street_paths)
+                        if leg_coords:
+                            pl = folium.PolyLine(
+                                leg_coords,
+                                color=color,
+                                weight=5,
+                                opacity=0.8,
+                                tooltip=f"Current Route {route_idx + 1} ({truck_names[route_idx]})",
+                                popup=f"Current Route {route_idx + 1} ({truck_names[route_idx]})"
+                            )
+                            pl.add_to(m)
+                            PolyLineTextPath(pl, '        >        ', repeat=True, offset=6, attributes={'fill': color, 'fill-opacity': '0.85', 'font-weight': 'bold', 'font-size': '14'}).add_to(m)
+                        else:
+                            pending_geom_legs += 1
+
+            elif selected_option == full_ortools_label:
                 show_proposed = st.toggle("Overlay Proposed Changes (Dotted Line)", value=True)
                 
                 # If proposed road geometry is missing, prefetch politely so full road curves show
@@ -1485,19 +1552,19 @@ if uploaded_file is not None:
                     
                     legs_common, legs_removed, legs_added = diff_route_legs(r_orig, r_new)
                     
-                    # 1. Unchanged Legs: Faint gray-tinted line
+                    # 1. Unchanged Legs: Dark vibrant slate gray line
                     for u, v in legs_common:
                         leg_coords = get_road_path(locations[u], locations[v], use_road_geometry=render_street_paths)
                         if leg_coords:
                             pl = folium.PolyLine(
                                 leg_coords,
-                                color='#94a3b8',
-                                weight=3,
-                                opacity=0.4,
+                                color='#475569',
+                                weight=4,
+                                opacity=0.75,
                                 tooltip=f"Unchanged: {node_names[u]} -> {node_names[v]} (Truck {t_name})"
                             )
                             pl.add_to(m)
-                            PolyLineTextPath(pl, '        >        ', repeat=True, offset=5, attributes={'fill': '#94a3b8', 'fill-opacity': '0.4', 'font-weight': 'bold', 'font-size': '12'}).add_to(m)
+                            PolyLineTextPath(pl, '        >        ', repeat=True, offset=5, attributes={'fill': '#475569', 'fill-opacity': '0.8', 'font-weight': 'bold', 'font-size': '13'}).add_to(m)
                         else:
                             pending_geom_legs += 1
                     
