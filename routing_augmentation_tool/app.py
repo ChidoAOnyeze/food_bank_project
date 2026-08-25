@@ -372,22 +372,33 @@ def save_geom_cache():
 def fetch_single_leg_geometry(p1, p2, use_osrm_first=True):
     if p1 == p2:
         return [p1, p2]
+    k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
+    geom_cache = load_geom_cache()
+    if k in geom_cache and len(geom_cache[k]) >= 2:
+        return geom_cache[k]
     
+    coords = None
     if use_osrm_first:
         osrm_coords = fetch_osrm_leg_geometry(p1, p2)
         if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
-            return osrm_coords
-        coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
-        if coords and len(coords) >= 2:
-            return coords
+            coords = osrm_coords
+        else:
+            valhalla_coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
+            if valhalla_coords and len(valhalla_coords) >= 2:
+                coords = valhalla_coords
     else:
-        coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
-        if coords and len(coords) >= 2:
-            return coords
-        print(f"[OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
-        osrm_coords = fetch_osrm_leg_geometry(p1, p2)
-        if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
-            return osrm_coords
+        valhalla_coords = default_valhalla_client.fetch_single_leg_geometry(p1, p2)
+        if valhalla_coords and len(valhalla_coords) >= 2:
+            coords = valhalla_coords
+        else:
+            print(f"[OSRM Fallback] Valhalla timed out/unavailable. Querying OSRM road geometry...")
+            osrm_coords = fetch_osrm_leg_geometry(p1, p2)
+            if osrm_coords and len(osrm_coords) >= 2 and osrm_coords != [p1, p2]:
+                coords = osrm_coords
+
+    if coords and len(coords) >= 2:
+        geom_cache[k] = coords
+        return coords
 
     return [p1, p2]
 
@@ -411,6 +422,8 @@ def fetch_subseq_geometry_batch(sub_seq, use_osrm_first=True):
     if len(sub_seq) < 2:
         return results
 
+    geom_cache = load_geom_cache()
+
     if use_osrm_first:
         for l_idx in range(len(sub_seq) - 1):
             p1 = sub_seq[l_idx]
@@ -419,9 +432,14 @@ def fetch_subseq_geometry_batch(sub_seq, use_osrm_first=True):
             c = fetch_single_leg_geometry(p1, p2, use_osrm_first=True)
             if c and len(c) > 2:
                 results[k] = c
+                geom_cache[k] = c
         return results
 
     results = default_valhalla_client.fetch_subseq_batch_geometry(sub_seq)
+    for k, c in results.items():
+        if c and len(c) > 2:
+            geom_cache[k] = c
+
     # If batch failed or timed out, fallback to OSRM / single legs
     if len(results) < len(sub_seq) - 1:
         for l_idx in range(len(sub_seq) - 1):
@@ -432,6 +450,7 @@ def fetch_subseq_geometry_batch(sub_seq, use_osrm_first=True):
                 c = fetch_single_leg_geometry(p1, p2, use_osrm_first=use_osrm_first)
                 if c and len(c) > 2:
                     results[k] = c
+                    geom_cache[k] = c
     return results
 
 def prefetch_and_cache_routes_geometry(routes_list, locations, use_osrm_first=True):
@@ -475,6 +494,12 @@ def prefetch_and_cache_routes_geometry(routes_list, locations, use_osrm_first=Tr
     print(f"[Geometry Cache] Cached {new_cached_count} new road leg geometries to memory.")
     save_geom_cache_async()
 
+_BACKGROUND_WORKER_BUSY = False
+
+def is_background_prefetch_running():
+    global _BACKGROUND_WORKER_BUSY
+    return _BACKGROUND_WORKER_BUSY
+
 def get_road_path(p1, p2, use_road_geometry=True):
     if p1 == p2:
         return [p1, p2]
@@ -484,8 +509,13 @@ def get_road_path(p1, p2, use_road_geometry=True):
     k = f"{p1[0]},{p1[1]}|{p2[0]},{p2[1]}"
     if k in geom_cache and len(geom_cache[k]) >= 2:
         return geom_cache[k]
-    # Return None so straight lines are omitted until real street curves finish downloading
-    return None
+    
+    # If the background download worker is actively running, hide straight line
+    if is_background_prefetch_running():
+        return None
+        
+    # Once downloads complete, gracefully fallback to direct line if a leg was unroutable
+    return [p1, p2]
 
 def get_full_route_geometry(locations_list, use_road_geometry=True):
     if not use_road_geometry or len(locations_list) < 2:
@@ -507,27 +537,35 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
     if not locations:
         return
         
+    global _BACKGROUND_WORKER_BUSY
+    
     def worker():
-        # 1. First Priority: Pre-fetch Full OR-Tools improved routes
-        if improved_routes:
-            print("[Background Worker] Pre-fetching road geometry for full fleet solution...")
-            try:
-                prefetch_and_cache_routes_geometry(improved_routes, locations, use_osrm_first=use_osrm_first)
-            except Exception as e:
-                print(f"[Background Worker Warning] Full fleet geometry: {e}")
-                
-        # 2. Second Priority: Pre-fetch top candidate moves
-        if top_moves:
-            total_to_fetch = min(limit, len(top_moves))
-            print(f"[Background Worker] Pre-fetching road geometry for top {total_to_fetch} candidate moves...")
-            for m_idx, move in enumerate(top_moves[:limit]):
+        global _BACKGROUND_WORKER_BUSY
+        _BACKGROUND_WORKER_BUSY = True
+        try:
+            # 1. First Priority: Pre-fetch Full OR-Tools improved routes
+            if improved_routes:
+                print("[Background Worker] Pre-fetching road geometry for full fleet solution...")
                 try:
-                    candidate_routes = move[3]
-                    prefetch_and_cache_routes_geometry(candidate_routes, locations, use_osrm_first=use_osrm_first)
-                    time.sleep(0.15)
+                    prefetch_and_cache_routes_geometry(improved_routes, locations, use_osrm_first=use_osrm_first)
                 except Exception as e:
-                    print(f"[Background Worker Warning] Move {m_idx}: {e}")
-        save_geom_cache_async()
+                    print(f"[Background Worker Warning] Full fleet geometry: {e}")
+                    
+            # 2. Second Priority: Pre-fetch top candidate moves
+            if top_moves:
+                total_to_fetch = min(limit, len(top_moves))
+                print(f"[Background Worker] Pre-fetching road geometry for top {total_to_fetch} candidate moves...")
+                for m_idx, move in enumerate(top_moves[:limit]):
+                    try:
+                        candidate_routes = move[3]
+                        prefetch_and_cache_routes_geometry(candidate_routes, locations, use_osrm_first=use_osrm_first)
+                        time.sleep(0.15)
+                    except Exception as e:
+                        print(f"[Background Worker Warning] Move {m_idx}: {e}")
+            save_geom_cache_async()
+            print("[Background Worker] Geometry pre-fetching completed.")
+        finally:
+            _BACKGROUND_WORKER_BUSY = False
 
     t = threading.Thread(target=worker, daemon=True)
     t.start()
@@ -1496,7 +1534,7 @@ if uploaded_file is not None:
                         else:
                             pending_geom_legs += 1
 
-            if render_street_paths and pending_geom_legs > 0:
+            if render_street_paths and pending_geom_legs > 0 and is_background_prefetch_running():
                 st.info(f"Downloading street network curves for {pending_geom_legs} route segment{'s' if pending_geom_legs > 1 else ''}... Map will automatically update every 5 seconds.")
 
             st_folium(m, width=900, height=600, returned_objects=[])
@@ -1574,7 +1612,7 @@ if uploaded_file is not None:
                         st.session_state['accepted_moves_history'] = []
                         st.rerun()
 
-            if render_street_paths and pending_geom_legs > 0:
+            if render_street_paths and pending_geom_legs > 0 and is_background_prefetch_running():
                 time.sleep(5)
                 st.rerun()
 
