@@ -245,7 +245,7 @@ def load_default_trucks_dataframe():
     return None
 
 
-def assign_trucks_to_routes(tdf, unique_rts, route_loads):
+def assign_trucks_to_routes(tdf, unique_rts, route_loads, include_spares=False):
     tdf = tdf.copy()
     tdf.columns = tdf.columns.astype(str).str.strip()
     cols_map = {str(c).strip().lower(): c for c in tdf.columns}
@@ -267,7 +267,9 @@ def assign_trucks_to_routes(tdf, unique_rts, route_loads):
         tdf['Vehicle'] = tdf[veh_col].astype(str).str.strip()
         available_trucks = tdf[['Vehicle', 'Pallet Capacity']].to_dict('records')
         
+        assigned_rts = []
         assigned_names = []
+        assigned_loads = []
         assigned_caps = []
         
         # Sort routes by load descending (Largest loads first)
@@ -291,13 +293,23 @@ def assign_trucks_to_routes(tdf, unique_rts, route_loads):
                 assignment_map[rt] = (f"Truck_{rt}", 25)
                 
         for rt in unique_rts:
+            assigned_rts.append(rt)
             assigned_names.append(assignment_map[rt][0])
+            assigned_loads.append(int(route_loads.get(rt, 0)))
             assigned_caps.append(assignment_map[rt][1])
+
+        # If include_spares is True, append all remaining unassigned trucks from fleet file
+        if include_spares and available_trucks:
+            for spare in available_trucks:
+                assigned_rts.append(f"Spare_{spare['Vehicle']}")
+                assigned_names.append(str(spare['Vehicle']))
+                assigned_loads.append(0)
+                assigned_caps.append(int(spare['Pallet Capacity']))
             
         return pd.DataFrame({
-            "Rt": unique_rts,
+            "Rt": assigned_rts,
             "Vehicle Name": assigned_names,
-            "Initial Load": [int(route_loads.get(rt, 0)) for rt in unique_rts],
+            "Initial Load": assigned_loads,
             "Capacity in Pallets": assigned_caps
         })
     else:
@@ -570,7 +582,7 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
     t = threading.Thread(target=worker, daemon=True)
     t.start()
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, makespan_coef=0, latency_coef=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None, use_osrm=True):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, distance_coef=1.0, makespan_coef=1.0, latency_coef=1.0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None, use_osrm=True):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
@@ -584,25 +596,40 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
     data['num_vehicles'] = len(vehicle_capacities)
     data['vehicle_capacities'] = vehicle_capacities
     data['depot'] = 0
+    num_trucks = max(1, data['num_vehicles'])
 
     # 2. OR-Tools Setup
     manager = pywrapcp.RoutingIndexManager(num_nodes, data['num_vehicles'], data['depot'])
     routing = pywrapcp.RoutingModel(manager)
 
+    # Arc cost evaluator: Distance divided by num_trucks and multiplied by distance_coef
     def distance_callback(from_index, to_index):
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return dist_matrix[from_node][to_node]
+        if distance_coef <= 0:
+            return 0
+        return int(round(dist_matrix[from_node][to_node] * distance_coef / num_trucks))
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
     
-    routing.AddDimension(transit_callback_index, 0, 10000000, True, 'Distance')
+    # Raw distance dimension for physical makespan (longest truck) and customer arrival latency
+    def raw_distance_callback(from_index, to_index):
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return dist_matrix[from_node][to_node]
+
+    raw_transit_callback_index = routing.RegisterTransitCallback(raw_distance_callback)
+    routing.AddDimension(raw_transit_callback_index, 0, 10000000, True, 'Distance')
     distance_dimension = routing.GetDimensionOrDie('Distance')
-    distance_dimension.SetGlobalSpanCostCoefficient(makespan_coef)
     
+    # Makespan coefficient: applied to longest truck route (single truck makespan)
+    distance_dimension.SetGlobalSpanCostCoefficient(int(round(makespan_coef)))
+    
+    # Latency coefficient: arrival cumulative distance divided by num_trucks
+    scaled_latency_penalty = int(round(latency_coef / num_trucks)) if latency_coef > 0 else 0
     for i in range(1, num_nodes):
-        distance_dimension.SetCumulVarSoftUpperBound(manager.NodeToIndex(i), 0, latency_coef)
+        distance_dimension.SetCumulVarSoftUpperBound(manager.NodeToIndex(i), 0, scaled_latency_penalty)
 
     def demand_callback(from_index):
         return data['demands'][manager.IndexToNode(from_index)]
@@ -649,7 +676,14 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
     base_dist = sum(route_dists)
     base_makespan = max(route_dists) if route_dists else 0
     base_latency = sum(route_latencies)
-    base_obj = base_dist + makespan_coef * base_makespan + latency_coef * base_latency
+    
+    def compute_objective_cost(dists, total_lat):
+        avg_dist = sum(dists) / num_trucks
+        makespan = max(dists) if dists else 0
+        avg_lat = total_lat / num_trucks
+        return distance_coef * avg_dist + makespan_coef * makespan + latency_coef * avg_lat
+
+    base_obj = compute_objective_cost(route_dists, base_latency)
 
     # Multi-Objective Neighborhood Search (< 0.08s across entire fleet)
     fast_candidates = []
@@ -673,7 +707,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                         d1, lat1 = compute_route_metrics(new_r1)
                         new_dists = list(route_dists)
                         new_dists[r1] = d1
-                        new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r1] + lat1)
+                        new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r1] + lat1)
                         if new_obj < base_obj or allow_overcapacity:
                             new_routes = [list(r) for r in initial_routes]
                             new_routes[r1] = new_r1
@@ -687,7 +721,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                         new_dists = list(route_dists)
                         new_dists[r1] = d1
                         new_dists[r2] = d2
-                        new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r1] - route_latencies[r2] + lat1 + lat2)
+                        new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r1] - route_latencies[r2] + lat1 + lat2)
                         if new_obj < base_obj or allow_overcapacity:
                             new_routes = [list(r) for r in initial_routes]
                             new_routes[r1] = new_r1
@@ -715,7 +749,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                         d_new1, lat_new1 = compute_route_metrics(new_r1)
                         new_dists = list(route_dists)
                         new_dists[r1] = d_new1
-                        new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r1] + lat_new1)
+                        new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r1] + lat_new1)
                         if new_obj < base_obj or allow_overcapacity:
                             new_routes = [list(r) for r in initial_routes]
                             new_routes[r1] = new_r1
@@ -729,7 +763,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                         new_dists = list(route_dists)
                         new_dists[r1] = d_new1
                         new_dists[r2] = d_new2
-                        new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r1] - route_latencies[r2] + lat_new1 + lat_new2)
+                        new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r1] - route_latencies[r2] + lat_new1 + lat_new2)
                         if new_obj < base_obj or allow_overcapacity:
                             new_routes = [list(r) for r in initial_routes]
                             new_routes[r1] = new_r1
@@ -748,7 +782,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                 d_new, lat_new = compute_route_metrics(new_r)
                 new_dists = list(route_dists)
                 new_dists[r] = d_new
-                new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r] + lat_new)
+                new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r] + lat_new)
                 if new_obj < base_obj or allow_overcapacity:
                     new_routes = [list(rt) for rt in initial_routes]
                     new_routes[r] = new_r
@@ -774,7 +808,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
                     new_dists = list(route_dists)
                     new_dists[r1] = d_new1
                     new_dists[r2] = d_new2
-                    new_obj = sum(new_dists) + makespan_coef * max(new_dists) + latency_coef * (base_latency - route_latencies[r1] - route_latencies[r2] + lat_new1 + lat_new2)
+                    new_obj = compute_objective_cost(new_dists, base_latency - route_latencies[r1] - route_latencies[r2] + lat_new1 + lat_new2)
                     if new_obj < base_obj or allow_overcapacity:
                         new_routes = [list(rt) for rt in initial_routes]
                         new_routes[r1] = new_r1
@@ -877,13 +911,32 @@ depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, 
 
 st.sidebar.header("Objective Weights")
 st.sidebar.markdown(
-    "Configure objective weights to balance route makespan and customer arrival latency against total fleet distance."
+    "Configure objective weights (**0 to 30**) to balance average fleet distance, route makespan, and customer arrival latency."
 )
-makespan_ui = st.sidebar.slider("Makespan Penalty (Route Balance)", min_value=1, max_value=5, value=1, step=1)
-latency_ui = st.sidebar.slider("Latency Penalty (Early Arrivals)", min_value=1, max_value=5, value=1, step=1)
-
-makespan_weight = makespan_ui * 10
-latency_weight = latency_ui * 10
+distance_weight = st.sidebar.slider(
+    "Total Distance Weight (Fleet Avg)",
+    min_value=0,
+    max_value=30,
+    value=1,
+    step=1,
+    help="Weight applied to the average distance per truck: Total Distance / Number of Trucks."
+)
+makespan_weight = st.sidebar.slider(
+    "Makespan Weight (Route Balance)",
+    min_value=0,
+    max_value=30,
+    value=1,
+    step=1,
+    help="Weight applied to the single longest route distance (Max Route Distance)."
+)
+latency_weight = st.sidebar.slider(
+    "Latency Weight (Early Deliveries)",
+    min_value=0,
+    max_value=30,
+    value=1,
+    step=1,
+    help="Weight applied to the average customer arrival latency per truck: Total Latency / Number of Trucks."
+)
 
 st.sidebar.header("Map Visualization")
 render_street_paths = st.sidebar.toggle(
@@ -901,7 +954,12 @@ routing_engine = st.sidebar.selectbox(
 )
 use_osrm_engine = ("OSRM" in routing_engine)
 
-st.sidebar.header("Execution Mode")
+st.sidebar.header("Execution Mode & Fleet")
+load_spare_trucks = st.sidebar.toggle(
+    "Load Spare Trucks from Fleet File",
+    value=False,
+    help="Toggle ON to load all remaining unassigned trucks from the truck fleet file as spare vehicles (0 initial stops) for the solver to utilize."
+)
 test_mode = st.sidebar.toggle("Test Mode (Limit search space)", value=False)
 allow_overcapacity = st.sidebar.toggle("Allow Over-Capacity (Soft Constraint)", value=False)
 
@@ -912,6 +970,17 @@ if uploaded_file is not None:
     file_bytes = uploaded_file.getvalue()
     file_hash = hash(file_bytes)
     
+    if 'last_load_spare_trucks' in st.session_state and st.session_state['last_load_spare_trucks'] != load_spare_trucks:
+        if 'accepted_routes' in st.session_state:
+            del st.session_state['accepted_routes']
+        if 'baseline_routes' in st.session_state:
+            del st.session_state['baseline_routes']
+        if 'accepted_moves_history' in st.session_state:
+            del st.session_state['accepted_moves_history']
+        if 'last_run_params' in st.session_state:
+            del st.session_state['last_run_params']
+    st.session_state['last_load_spare_trucks'] = load_spare_trucks
+
     if 'current_file_hash' not in st.session_state or st.session_state['current_file_hash'] != file_hash:
         st.session_state['current_file_hash'] = file_hash
         if 'accepted_routes' in st.session_state:
@@ -988,7 +1057,7 @@ if uploaded_file is not None:
                 trucks_source_df = load_default_trucks_dataframe()
 
             if trucks_source_df is not None:
-                truck_df = assign_trucks_to_routes(trucks_source_df, unique_rts, route_loads)
+                truck_df = assign_trucks_to_routes(trucks_source_df, unique_rts, route_loads, include_spares=load_spare_trucks)
             else:
                 truck_df = pd.DataFrame({
                     "Rt": unique_rts,
@@ -1054,11 +1123,8 @@ if uploaded_file is not None:
         if 'baseline_routes' not in st.session_state:
             st.session_state['baseline_routes'] = [list(r) for r in initial_routes]
 
-                    
-        st.info("Parsing completed. Preparing routing engine...")
-        
         # Check if parameters changed to avoid re-running when just interacting with UI
-        current_params = (locations, demands, vehicle_capacities, initial_routes, makespan_weight, latency_weight, test_mode, allow_overcapacity, routing_engine)
+        current_params = (locations, demands, vehicle_capacities, initial_routes, distance_weight, makespan_weight, latency_weight, test_mode, allow_overcapacity, routing_engine, load_spare_trucks)
 
         needs_optimization = ('last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params)
         
@@ -1068,7 +1134,10 @@ if uploaded_file is not None:
             with st.spinner("Running Google OR-Tools Guided Local Search and evaluating route improvements..."):
                 res_tuple = solve_routing(
                     locations, demands, vehicle_capacities, initial_routes, truck_names, node_names,
-                    makespan_weight, latency_weight, test_mode=test_mode,
+                    distance_coef=distance_weight,
+                    makespan_coef=makespan_weight,
+                    latency_coef=latency_weight,
+                    test_mode=test_mode,
                     allow_overcapacity=allow_overcapacity,
                     rejected_moves=st.session_state.get('rejected_moves', set()),
                     touched_routes=touched_routes,
@@ -1145,9 +1214,53 @@ if uploaded_file is not None:
 
                 if not had_penalties:
                     total_pct = ((init_cost - final_cost) / init_cost) * 100 if final_cost is not None else 0.0
-                    st.metric("Total Route Improvement (OR-Tools Guided Local Search)", f"{total_pct:.1f}%")
-                else:
-                    st.metric("Penalty Score Improvement (Soft Constraints)", f"{init_cost - final_cost} points")
+                
+                # Precompute detailed per-truck objective metrics
+                dist_matrix = get_osrm_distance_matrix(locations) if use_osrm_engine else get_valhalla_distance_matrix(locations)
+                num_trucks = max(1, len(truck_names))
+                
+                def calc_fleet_metrics(r_list):
+                    if not r_list:
+                        return 0.0, 0.0, 0.0
+                    d_list, lat_list = [], []
+                    for r in r_list:
+                        if not r: continue
+                        seq = [0] + r + [0]
+                        cumul = 0
+                        r_lat = 0
+                        for i in range(len(seq) - 1):
+                            d = dist_matrix[seq[i]][seq[i+1]]
+                            cumul += d
+                            if i < len(r):
+                                r_lat += cumul
+                        d_list.append(cumul)
+                        lat_list.append(r_lat)
+                    avg_d = (sum(d_list) / num_trucks) if d_list else 0.0
+                    m_span = max(d_list) if d_list else 0.0
+                    avg_l = (sum(lat_list) / num_trucks) if lat_list else 0.0
+                    return avg_d, m_span, avg_l
+
+                b_avg_d, b_makespan, b_avg_lat = calc_fleet_metrics(initial_routes)
+                o_avg_d, o_makespan, o_avg_lat = calc_fleet_metrics(improved_routes if improved_routes else initial_routes)
+
+                k1, k2, k3, k4 = st.columns(4)
+                with k1:
+                    if not had_penalties:
+                        st.metric("Total Route Improvement", f"{total_pct:.1f}%")
+                    else:
+                        st.metric("Penalty Score Improvement", f"{init_cost - final_cost:,.0f} pts")
+                with k2:
+                    d_mi = o_avg_d * 0.000621371
+                    d_delta = (o_avg_d - b_avg_d) * 0.000621371
+                    st.metric("Avg Distance / Truck", f"{d_mi:.1f} mi", delta=f"{d_delta:.1f} mi", delta_color="inverse")
+                with k3:
+                    m_mi = o_makespan * 0.000621371
+                    m_delta = (o_makespan - b_makespan) * 0.000621371
+                    st.metric("Makespan (Longest Truck)", f"{m_mi:.1f} mi", delta=f"{m_delta:.1f} mi", delta_color="inverse")
+                with k4:
+                    l_mi = o_avg_lat * 0.000621371
+                    l_delta = (o_avg_lat - b_avg_lat) * 0.000621371
+                    st.metric("Avg Latency / Truck", f"{l_mi:.1f} mi", delta=f"{l_delta:.1f} mi", delta_color="inverse")
             else:
                 st.write("No initial cost to compare.")
 

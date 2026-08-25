@@ -123,6 +123,8 @@ def load_and_preprocess_orders(file_source, file_name=None, rounding_mode='ceil'
     # Customer identifiers
     if cust_id_col:
         df['customer_id'] = df[cust_id_col].astype(str).str.replace('.0', '', regex=False).str.strip()
+    elif name_col:
+        df['customer_id'] = df[name_col].astype(str).str.strip()
     else:
         df['customer_id'] = "CUST_" + df.index.astype(str)
 
@@ -143,6 +145,8 @@ def load_and_preprocess_orders(file_source, file_name=None, rounding_mode='ceil'
 def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'):
     """
     Aggregates orders by customer location for a specific day of the week (or 'All Days').
+    Merges dry, cold, and multi-line items delivered to the same customer on the same date
+    into a single consolidated delivery order.
     """
     filtered_df = df.copy()
     if selected_day != 'All Days':
@@ -159,15 +163,41 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
         empty_df.attrs['validation_issues'] = df.attrs.get('validation_issues', [])
         return empty_df
 
-    grouped = filtered_df.groupby(['customer_id', 'customer_name', 'latitude', 'longitude']).agg(
+    # 1. Establish unique date identifier per order line
+    if 'parsed_date' in filtered_df.columns and filtered_df['parsed_date'].notna().any():
+        filtered_df['order_date_key'] = filtered_df['parsed_date'].dt.strftime('%Y-%m-%d').fillna(filtered_df['day_of_week'])
+    else:
+        filtered_df['order_date_key'] = filtered_df['day_of_week'].fillna('Single Delivery Day')
+
+    # 2. Stage 1: Group dry, cold, and multi-item rows on the same day into 1 consolidated delivery order per customer
+    order_grouped = filtered_df.groupby([
+        'customer_id', 'customer_name', 'latitude', 'longitude', 'order_date_key', 'day_of_week'
+    ]).agg(
+        order_pallets=('order_pallets', 'sum'),
+        food_pallets=('food_pallets', 'sum') if 'food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        pet_food_pallets=('pet_food_pallets', 'sum') if 'pet_food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        chemical_pallets=('chemical_pallets', 'sum') if 'chemical_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
+        order_weight=('order_weight', 'sum') if 'order_weight' in filtered_df.columns else ('order_pallets', 'sum'),
+        address=('address_full', 'first'),
+        city_borough=('city_borough', 'first')
+    ).reset_index()
+
+    # Apply per-order rounding to the consolidated order demand
+    if rounding_mode == 'ceil':
+        order_grouped['order_pallets_rounded'] = order_grouped['order_pallets'].apply(lambda x: math.ceil(x) if pd.notna(x) else 0)
+    else:
+        order_grouped['order_pallets_rounded'] = order_grouped['order_pallets'].round()
+
+    # 3. Stage 2: Aggregate across all delivery dates for each customer
+    grouped = order_grouped.groupby(['customer_id', 'customer_name', 'latitude', 'longitude']).agg(
         total_pallets_unrounded=('order_pallets', 'sum'),
         total_pallets_rounded=('order_pallets_rounded', 'sum'),
-        total_food_pallets=('food_pallets', 'sum') if 'food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
-        total_pet_food_pallets=('pet_food_pallets', 'sum') if 'pet_food_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
-        total_chemical_pallets=('chemical_pallets', 'sum') if 'chemical_pallets' in filtered_df.columns else ('order_pallets', 'sum'),
-        total_weight=('order_weight', 'sum') if 'order_weight' in filtered_df.columns else ('order_pallets', 'sum'),
-        total_orders=('order_pallets', 'count'),
-        address=('address_full', 'first'),
+        total_food_pallets=('food_pallets', 'sum'),
+        total_pet_food_pallets=('pet_food_pallets', 'sum'),
+        total_chemical_pallets=('chemical_pallets', 'sum'),
+        total_weight=('order_weight', 'sum'),
+        total_orders=('order_date_key', 'count'),
+        address=('address', 'first'),
         city_borough=('city_borough', 'first')
     ).reset_index()
 
