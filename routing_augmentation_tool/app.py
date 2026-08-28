@@ -20,7 +20,12 @@ for _p in [_common_dir, _parent_dir]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+import importlib
 try:
+    import common.valhalla_api
+    importlib.reload(common.valhalla_api)
+    import common.osrm_api
+    importlib.reload(common.osrm_api)
     from common.valhalla_api import (
         default_valhalla_client,
         get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
@@ -30,8 +35,12 @@ try:
         fetch_osrm_leg_geometry,
         fetch_osrm_route_geometry,
     )
-except ImportError:
+except Exception:
     try:
+        import valhalla_api
+        importlib.reload(valhalla_api)
+        import osrm_api
+        importlib.reload(osrm_api)
         from valhalla_api import (
             default_valhalla_client,
             get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
@@ -41,7 +50,7 @@ except ImportError:
             fetch_osrm_leg_geometry,
             fetch_osrm_route_geometry,
         )
-    except ImportError:
+    except Exception:
         from .valhalla_api import (
             default_valhalla_client,
             get_valhalla_distance_matrix as _get_valhalla_distance_matrix,
@@ -321,21 +330,26 @@ def assign_trucks_to_routes(tdf, unique_rts, route_loads, include_spares=False):
         })
 
 
-def get_valhalla_distance_matrix(locations):
+def get_valhalla_distance_matrix(locations, metric="distance"):
     def on_error(msg):
         st.error(msg)
         st.stop()
-    return _get_valhalla_distance_matrix(locations, cache_file=VALHALLA_CACHE_FILE, on_error=on_error)
-
-
-def get_osrm_distance_matrix(locations):
+    if hasattr(default_valhalla_client, "get_transit_matrix"):
+        return default_valhalla_client.get_transit_matrix(locations, metric=metric, cache_file=VALHALLA_CACHE_FILE, on_error=on_error)
     try:
-        matrix = default_osrm_client.get_distance_matrix(locations)
+        return _get_valhalla_distance_matrix(locations, metric=metric, cache_file=VALHALLA_CACHE_FILE, on_error=on_error)
+    except TypeError:
+        return _get_valhalla_distance_matrix(locations, cache_file=VALHALLA_CACHE_FILE, on_error=on_error)
+
+
+def get_osrm_distance_matrix(locations, metric="distance"):
+    try:
+        matrix = default_osrm_client.get_distance_matrix(locations, metric=metric)
         if matrix and len(matrix) == len(locations):
             return matrix
     except Exception as e:
         print(f"[OSRM API Warning] Table query failed, falling back to Valhalla: {e}")
-    return get_valhalla_distance_matrix(locations)
+    return get_valhalla_distance_matrix(locations, metric=metric)
 
 
 
@@ -582,15 +596,16 @@ def start_background_geometry_prefetch(top_moves, improved_routes, locations, li
     t = threading.Thread(target=worker, daemon=True)
     t.start()
 
-def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, distance_coef=1.0, makespan_coef=1.0, latency_coef=1.0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None, use_osrm=True):
+def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_names, node_names, distance_coef=1.0, makespan_coef=1.0, latency_coef=1.0, transit_metric="distance", service_time_mins=0, ui_container=None, test_mode=False, allow_overcapacity=False, rejected_moves=None, touched_routes=None, previous_candidates=None, use_osrm=True):
     # 1. Create Data Model
     data = {}
     num_nodes = len(locations)
     if use_osrm:
-        data['distance_matrix'] = get_osrm_distance_matrix(locations)
+        data['distance_matrix'] = get_osrm_distance_matrix(locations, metric=transit_metric)
     else:
-        data['distance_matrix'] = get_valhalla_distance_matrix(locations)
+        data['distance_matrix'] = get_valhalla_distance_matrix(locations, metric=transit_metric)
     dist_matrix = data['distance_matrix']
+    service_time_seconds = int(service_time_mins * 60) if transit_metric == "time" else 0
     
     data['demands'] = demands
     data['num_vehicles'] = len(vehicle_capacities)
@@ -602,22 +617,26 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
     manager = pywrapcp.RoutingIndexManager(num_nodes, data['num_vehicles'], data['depot'])
     routing = pywrapcp.RoutingModel(manager)
 
-    # Arc cost evaluator: Distance divided by num_trucks and multiplied by distance_coef
+    # Arc cost evaluator: (Drive cost + stop service time) divided by num_trucks and multiplied by distance_coef
     def distance_callback(from_index, to_index):
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
         if distance_coef <= 0:
             return 0
-        return int(round(dist_matrix[from_node][to_node] * distance_coef / num_trucks))
+        drive_cost = dist_matrix[from_node][to_node]
+        st_cost = service_time_seconds if from_node != 0 else 0
+        return int(round((drive_cost + st_cost) * distance_coef / num_trucks))
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
     
-    # Raw distance dimension for physical makespan (longest truck) and customer arrival latency
+    # Raw distance/time dimension for physical makespan (longest truck) and customer arrival latency
     def raw_distance_callback(from_index, to_index):
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return dist_matrix[from_node][to_node]
+        drive_cost = dist_matrix[from_node][to_node]
+        st_cost = service_time_seconds if from_node != 0 else 0
+        return drive_cost + st_cost
 
     raw_transit_callback_index = routing.RegisterTransitCallback(raw_distance_callback)
     routing.AddDimension(raw_transit_callback_index, 0, 10000000, True, 'Distance')
@@ -654,7 +673,7 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
 
     initial_cost = initial_solution.ObjectiveValue()
 
-    # Precompute fast route metrics (distance, latency, loads) in pure Python (< 0.001s)
+    # Precompute fast route metrics (distance/duration, latency, loads) in pure Python (< 0.001s)
     def compute_route_metrics(r):
         if not r:
             return 0, 0
@@ -662,8 +681,10 @@ def solve_routing(locations, demands, vehicle_capacities, initial_routes, truck_
         cumul = 0
         r_lat = 0
         for i in range(len(seq) - 1):
-            d = dist_matrix[seq[i]][seq[i+1]]
-            cumul += d
+            from_n = seq[i]
+            to_n = seq[i+1]
+            st = service_time_seconds if from_n != 0 else 0
+            cumul += dist_matrix[from_n][to_n] + st
             if i < len(r):
                 r_lat += cumul
         return cumul, r_lat
@@ -909,33 +930,62 @@ default_depot_lng = -73.87299938
 depot_lat = st.sidebar.number_input("Depot Latitude", value=default_depot_lat, format="%.8f")
 depot_lng = st.sidebar.number_input("Depot Longitude", value=default_depot_lng, format="%.8f")
 
+st.sidebar.header("Optimization Metric")
+optimization_metric = st.sidebar.radio(
+    "Optimization Base Metric",
+    ["Distance (Miles)", "Time (Minutes)"],
+    index=0,
+    help="Toggle between minimizing total driving distance (miles) or travel duration (minutes/hours)."
+)
+is_time_metric = ("Time" in optimization_metric)
+transit_metric = "time" if is_time_metric else "distance"
+
+if is_time_metric:
+    service_time_mins = st.sidebar.number_input(
+        "Stop Service / Unload Time (mins)",
+        min_value=0,
+        max_value=1440,
+        value=30,
+        step=5,
+        help="Amount of time (in minutes) spent servicing/unloading at each customer stop. Added to driving duration for arrival latency and total shift duration."
+    )
+else:
+    service_time_mins = 0
+
 st.sidebar.header("Objective Weights")
 st.sidebar.markdown(
-    "Configure objective weights (**0 to 30**) to balance average fleet distance, route makespan, and customer arrival latency."
+    f"Configure objective weights (**0 to 30**) to balance average fleet {'travel duration' if is_time_metric else 'distance'}, route makespan, and customer arrival latency."
 )
+dist_time_label = "Total Travel Time Weight (Fleet Avg)" if is_time_metric else "Total Distance Weight (Fleet Avg)"
+dist_time_help = "Weight applied to the average driving time per truck: Total Time / Number of Trucks." if is_time_metric else "Weight applied to the average distance per truck: Total Distance / Number of Trucks."
+makespan_label = "Makespan Weight (Longest Shift Duration)" if is_time_metric else "Makespan Weight (Longest Route Mileage)"
+makespan_help = "Weight applied to the single longest route duration (Max Shift Time)." if is_time_metric else "Weight applied to the single longest route distance (Max Route Distance)."
+latency_label = "Arrival Latency Weight (Early Deliveries)"
+latency_help = "Weight applied to the average customer arrival clock time per truck: Total Arrival Time / Number of Trucks." if is_time_metric else "Weight applied to the average customer arrival distance per truck: Total Latency / Number of Trucks."
+
 distance_weight = st.sidebar.slider(
-    "Total Distance Weight (Fleet Avg)",
+    dist_time_label,
     min_value=0,
     max_value=30,
     value=1,
     step=1,
-    help="Weight applied to the average distance per truck: Total Distance / Number of Trucks."
+    help=dist_time_help
 )
 makespan_weight = st.sidebar.slider(
-    "Makespan Weight (Route Balance)",
+    makespan_label,
     min_value=0,
     max_value=30,
     value=1,
     step=1,
-    help="Weight applied to the single longest route distance (Max Route Distance)."
+    help=makespan_help
 )
 latency_weight = st.sidebar.slider(
-    "Latency Weight (Early Deliveries)",
+    latency_label,
     min_value=0,
     max_value=30,
     value=1,
     step=1,
-    help="Weight applied to the average customer arrival latency per truck: Total Latency / Number of Trucks."
+    help=latency_help
 )
 
 st.sidebar.header("Map Visualization")
@@ -1124,7 +1174,7 @@ if uploaded_file is not None:
             st.session_state['baseline_routes'] = [list(r) for r in initial_routes]
 
         # Check if parameters changed to avoid re-running when just interacting with UI
-        current_params = (locations, demands, vehicle_capacities, initial_routes, distance_weight, makespan_weight, latency_weight, test_mode, allow_overcapacity, routing_engine, load_spare_trucks)
+        current_params = (locations, demands, vehicle_capacities, initial_routes, distance_weight, makespan_weight, latency_weight, test_mode, allow_overcapacity, routing_engine, load_spare_trucks, transit_metric, service_time_mins)
 
         needs_optimization = ('last_run_params' not in st.session_state or st.session_state['last_run_params'] != current_params)
         
@@ -1137,6 +1187,8 @@ if uploaded_file is not None:
                     distance_coef=distance_weight,
                     makespan_coef=makespan_weight,
                     latency_coef=latency_weight,
+                    transit_metric=transit_metric,
+                    service_time_mins=service_time_mins,
                     test_mode=test_mode,
                     allow_overcapacity=allow_overcapacity,
                     rejected_moves=st.session_state.get('rejected_moves', set()),
@@ -1216,8 +1268,9 @@ if uploaded_file is not None:
                     total_pct = ((init_cost - final_cost) / init_cost) * 100 if final_cost is not None else 0.0
                 
                 # Precompute detailed per-truck objective metrics
-                dist_matrix = get_osrm_distance_matrix(locations) if use_osrm_engine else get_valhalla_distance_matrix(locations)
+                dist_matrix = get_osrm_distance_matrix(locations, metric=transit_metric) if use_osrm_engine else get_valhalla_distance_matrix(locations, metric=transit_metric)
                 num_trucks = max(1, len(truck_names))
+                service_time_seconds = int(service_time_mins * 60) if is_time_metric else 0
                 
                 def calc_fleet_metrics(r_list):
                     if not r_list:
@@ -1229,8 +1282,10 @@ if uploaded_file is not None:
                         cumul = 0
                         r_lat = 0
                         for i in range(len(seq) - 1):
-                            d = dist_matrix[seq[i]][seq[i+1]]
-                            cumul += d
+                            from_n = seq[i]
+                            to_n = seq[i+1]
+                            st = service_time_seconds if from_n != 0 else 0
+                            cumul += dist_matrix[from_n][to_n] + st
                             if i < len(r):
                                 r_lat += cumul
                         d_list.append(cumul)
@@ -1249,18 +1304,36 @@ if uploaded_file is not None:
                         st.metric("Total Route Improvement", f"{total_pct:.1f}%")
                     else:
                         st.metric("Penalty Score Improvement", f"{init_cost - final_cost:,.0f} pts")
-                with k2:
-                    d_mi = o_avg_d * 0.000621371
-                    d_delta = (o_avg_d - b_avg_d) * 0.000621371
-                    st.metric("Avg Distance / Truck", f"{d_mi:.1f} mi", delta=f"{d_delta:.1f} mi", delta_color="inverse")
-                with k3:
-                    m_mi = o_makespan * 0.000621371
-                    m_delta = (o_makespan - b_makespan) * 0.000621371
-                    st.metric("Makespan (Longest Truck)", f"{m_mi:.1f} mi", delta=f"{m_delta:.1f} mi", delta_color="inverse")
-                with k4:
-                    l_mi = o_avg_lat * 0.000621371
-                    l_delta = (o_avg_lat - b_avg_lat) * 0.000621371
-                    st.metric("Avg Latency / Truck", f"{l_mi:.1f} mi", delta=f"{l_delta:.1f} mi", delta_color="inverse")
+                
+                if is_time_metric:
+                    with k2:
+                        avg_mins = o_avg_d / 60.0
+                        delta_mins = (o_avg_d - b_avg_d) / 60.0
+                        st.metric("Avg Duration / Truck", f"{avg_mins:.1f} min", delta=f"{delta_mins:.1f} min", delta_color="inverse")
+                    with k3:
+                        m_mins = o_makespan / 60.0
+                        m_delta_mins = (o_makespan - b_makespan) / 60.0
+                        if m_mins >= 60:
+                            st.metric("Makespan (Longest Shift)", f"{m_mins/60.0:.1f} hrs", delta=f"{m_delta_mins/60.0:.1f} hrs", delta_color="inverse")
+                        else:
+                            st.metric("Makespan (Longest Shift)", f"{m_mins:.1f} min", delta=f"{m_delta_mins:.1f} min", delta_color="inverse")
+                    with k4:
+                        l_mins = o_avg_lat / 60.0
+                        l_delta_mins = (o_avg_lat - b_avg_lat) / 60.0
+                        st.metric("Avg Arrival Latency", f"{l_mins:.1f} min", delta=f"{l_delta_mins:.1f} min", delta_color="inverse")
+                else:
+                    with k2:
+                        d_mi = o_avg_d * 0.000621371
+                        d_delta = (o_avg_d - b_avg_d) * 0.000621371
+                        st.metric("Avg Distance / Truck", f"{d_mi:.1f} mi", delta=f"{d_delta:.1f} mi", delta_color="inverse")
+                    with k3:
+                        m_mi = o_makespan * 0.000621371
+                        m_delta = (o_makespan - b_makespan) * 0.000621371
+                        st.metric("Makespan (Longest Truck)", f"{m_mi:.1f} mi", delta=f"{m_delta:.1f} mi", delta_color="inverse")
+                    with k4:
+                        l_mi = o_avg_lat * 0.000621371
+                        l_delta = (o_avg_lat - b_avg_lat) * 0.000621371
+                        st.metric("Avg Latency / Truck", f"{l_mi:.1f} mi", delta=f"{l_delta:.1f} mi", delta_color="inverse")
             else:
                 st.write("No initial cost to compare.")
 

@@ -4,9 +4,12 @@ from folium.plugins import HeatMap
 METRIC_LABELS = {
     'total_pallets_unrounded': 'Total Pallets Consumed (Unrounded)',
     'total_pallets_rounded': 'Total Rounded Pallets (Per-Order Rounded)',
-    'total_food_pallets': 'Food Pallets',
-    'total_pet_food_pallets': 'Pet Food Pallets',
-    'total_chemical_pallets': 'Chemical Pallets',
+    'total_food_pallets': 'Food Pallets (Unrounded)',
+    'total_food_pallets_rounded': 'Food Pallets (Rounded)',
+    'total_pet_food_pallets': 'Pet Food Pallets (Unrounded)',
+    'total_pet_food_pallets_rounded': 'Pet Food Pallets (Rounded)',
+    'total_chemical_pallets': 'Chemical Pallets (Unrounded)',
+    'total_chemical_pallets_rounded': 'Chemical Pallets (Rounded)',
     'total_weight': 'Total Weight (lbs)',
     'pallets_per_order': 'Average Pallets per Order',
     'total_orders': 'Total Number of Orders'
@@ -14,10 +17,13 @@ METRIC_LABELS = {
 
 METRIC_UNITS = {
     'total_pallets_unrounded': 'pallets',
-    'total_pallets_rounded': 'rounded pallets',
-    'total_food_pallets': 'food pallets',
-    'total_pet_food_pallets': 'pet food pallets',
-    'total_chemical_pallets': 'chemical pallets',
+    'total_pallets_rounded': 'rounded plts',
+    'total_food_pallets': 'food plts',
+    'total_food_pallets_rounded': 'rounded food plts',
+    'total_pet_food_pallets': 'pet plts',
+    'total_pet_food_pallets_rounded': 'rounded pet plts',
+    'total_chemical_pallets': 'chem plts',
+    'total_chemical_pallets_rounded': 'rounded chem plts',
     'total_weight': 'lbs',
     'pallets_per_order': 'pallets / order',
     'total_orders': 'orders'

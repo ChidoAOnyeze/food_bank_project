@@ -159,10 +159,51 @@ class ValhallaClient:
 
         return results
 
-    def get_distance_matrix(self, locations, cache=None, cache_file=None, chunk_size: int = 40, retry_delays=(0, 5, 10, 15), on_error=None):
+    def _fallback_car_pair(self, p1, p2):
         """
-        Computes the complete distance matrix (in meters) for a list of locations.
-        Utilizes provided cache dict / cache_file to look up existing distances,
+        Fallback when truck routing is unroutable or fails:
+        1. Queries OSRM driving car routing.
+        2. If OSRM fails, queries Valhalla 'auto' costing.
+        3. If all fails, uses penalized geodesic straight-line estimation.
+        Returns (distance_meters, duration_seconds).
+        """
+        # 1. Try OSRM Car Route
+        try:
+            osrm_url = f"https://router.project-osrm.org/route/v1/driving/{p1[1]},{p1[0]};{p2[1]},{p2[0]}?overview=false"
+            resp = requests.get(osrm_url, timeout=3.0)
+            if resp.status_code == 200:
+                routes = resp.json().get("routes", [])
+                if routes and routes[0].get("distance"):
+                    d_m = int(round(routes[0]["distance"]))
+                    t_s = int(round(routes[0].get("duration", d_m / 8.33)))
+                    if d_m > 0:
+                        print(f"[Fallback OSRM Car] Resolved ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}): {d_m}m, {t_s}s ({t_s/60.0:.1f} min)")
+                        return d_m, t_s
+        except Exception:
+            pass
+
+        # 2. Try Valhalla Auto Costing
+        try:
+            data = self.fetch_route([p1, p2], costing="auto", timeout=3.0)
+            summary = data.get("trip", {}).get("summary", {})
+            if "length" in summary:
+                d_m = int(round(summary["length"] * 1000))
+                t_s = int(round(summary.get("time", d_m / 8.33)))
+                print(f"[Fallback Valhalla Auto] Resolved ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}): {d_m}m, {t_s}s ({t_s/60.0:.1f} min)")
+                return d_m, t_s
+        except Exception:
+            pass
+
+        # 3. Final Fallback: Penalized Geodesic
+        d_fb = int(geodesic(p1, p2).meters * 1.5)
+        t_fb = int(d_fb / 8.33)
+        print(f"[Fallback Geodesic] Used penalized straight-line estimate for ({p1[0]:.5f}, {p1[1]:.5f}) -> ({p2[0]:.5f}, {p2[1]:.5f}): {d_fb}m, {t_fb}s")
+        return d_fb, t_fb
+
+    def get_transit_matrix(self, locations, metric="distance", cache=None, cache_file=None, chunk_size: int = 40, retry_delays=(0, 5, 10, 15), on_error=None):
+        """
+        Computes the complete transit matrix (in meters for 'distance', or seconds for 'time') for a list of locations.
+        Utilizes provided cache dict / cache_file to look up existing entries,
         and queries Valhalla for missing pairs with exponential retry delays and batch halving.
         """
         if cache is None:
@@ -175,7 +216,16 @@ class ValhallaClient:
                     cache = {}
 
         num_nodes = len(locations)
-        distance_matrix = [[0] * num_nodes for _ in range(num_nodes)]
+        matrix = [[0] * num_nodes for _ in range(num_nodes)]
+
+        def is_cached_for_metric(k):
+            if k not in cache:
+                return False
+            val = cache[k]
+            if metric == "distance":
+                return isinstance(val, (int, float)) or (isinstance(val, dict) and "dist" in val)
+            else: # time
+                return isinstance(val, dict) and "time" in val
 
         missing_indices = set()
         for i in range(num_nodes):
@@ -183,7 +233,7 @@ class ValhallaClient:
                 if i == j:
                     continue
                 k = f"{locations[i][0]},{locations[i][1]}|{locations[j][0]},{locations[j][1]}"
-                if k not in cache:
+                if not is_cached_for_metric(k):
                     missing_indices.add(i)
                     missing_indices.add(j)
 
@@ -209,11 +259,16 @@ class ValhallaClient:
                                 orig_j = idx_j[c_idx]
                                 k = f"{locations[orig_i][0]},{locations[orig_i][1]}|{locations[orig_j][0]},{locations[orig_j][1]}"
                                 if target and target.get("distance") is not None:
-                                    cache[k] = int(target["distance"] * 1000)
+                                    d_meters = int(target["distance"] * 1000)
+                                    t_seconds = int(target.get("time", d_meters / 8.33))
+                                    cache[k] = {"dist": d_meters, "time": t_seconds}
                                     s_count += 1
                                 else:
-                                    print(f"Warning: Unroutable path between {locations[orig_i]} and {locations[orig_j]}. Using penalized fallback.")
-                                    cache[k] = int(geodesic(locations[orig_i], locations[orig_j]).meters * 1.5)
+                                    p_from = locations[orig_i]
+                                    p_to = locations[orig_j]
+                                    print(f"Warning: Truck route unroutable between {p_from} and {p_to}. Falling back to car route (OSRM / Auto)...")
+                                    d_fb, t_fb = self._fallback_car_pair(p_from, p_to)
+                                    cache[k] = {"dist": d_fb, "time": t_fb}
                                     f_count += 1
                         time.sleep(0.5)
                         return True, s_count, f_count
@@ -251,7 +306,7 @@ class ValhallaClient:
                     api_success_count += s_count
                     api_fail_count += f_count
                     if not success:
-                        error_msg = "Valhalla API permanently failed after all retries and halving. Using geodesic fallback for remaining pairs."
+                        error_msg = "Valhalla API permanently failed after all retries and halving. Using car route fallback (OSRM) for remaining pairs."
                         print(f"[Valhalla API Warning] {error_msg}")
                         if on_error:
                             on_error(error_msg)
@@ -261,7 +316,8 @@ class ValhallaClient:
                                     if idx_a == idx_b: continue
                                     k_fall = f"{locations[idx_a][0]},{locations[idx_a][1]}|{locations[idx_b][0]},{locations[idx_b][1]}"
                                     if k_fall not in cache:
-                                        cache[k_fall] = int(geodesic(locations[idx_a], locations[idx_b]).meters * 1.5)
+                                        d_fb, t_fb = self._fallback_car_pair(locations[idx_a], locations[idx_b])
+                                        cache[k_fall] = {"dist": d_fb, "time": t_fb}
                                         api_fail_count += 1
 
             print(f"Valhalla API Summary -> Successful Routes: {api_success_count} | Failed/Fallback Routes: {api_fail_count}")
@@ -280,21 +336,29 @@ class ValhallaClient:
                     continue
                 k = f"{locations[i][0]},{locations[i][1]}|{locations[j][0]},{locations[j][1]}"
                 if k in cache:
-                    distance_matrix[i][j] = cache[k]
+                    val = cache[k]
+                    if isinstance(val, dict):
+                        matrix[i][j] = int(val["time"] if metric == "time" else val["dist"])
+                    else:
+                        matrix[i][j] = int(val / 8.33 if metric == "time" else val)
                 else:
-                    distance_matrix[i][j] = int(geodesic(locations[i], locations[j]).meters * 1.5)
+                    d_geo = int(geodesic(locations[i], locations[j]).meters * 1.5)
+                    matrix[i][j] = int(d_geo / 8.33 if metric == "time" else d_geo)
 
-        return distance_matrix
+        return matrix
+
+    def get_distance_matrix(self, locations, metric="distance", cache=None, cache_file=None, chunk_size: int = 40, retry_delays=(0, 5, 10, 15), on_error=None):
+        return self.get_transit_matrix(locations, metric=metric, cache=cache, cache_file=cache_file, chunk_size=chunk_size, retry_delays=retry_delays, on_error=on_error)
 
 
 # Default singleton instance
 default_valhalla_client = ValhallaClient()
 
-def get_valhalla_distance_matrix(locations, cache_file=None, on_error=None):
+def get_valhalla_distance_matrix(locations, metric="distance", cache_file=None, on_error=None):
     """
-    Convenience function to compute distance matrix using the default Valhalla client.
+    Convenience function to compute transit matrix (distance in meters, or time in seconds) using Valhalla.
     """
-    return default_valhalla_client.get_distance_matrix(locations, cache_file=cache_file, on_error=on_error)
+    return default_valhalla_client.get_transit_matrix(locations, metric=metric, cache_file=cache_file, on_error=on_error)
 
 def fetch_single_leg_geometry(p1, p2, costing_list=("truck", "auto")):
     """

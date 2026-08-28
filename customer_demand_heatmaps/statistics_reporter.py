@@ -17,9 +17,12 @@ def compute_detailed_statistics(cust_df, group_by_col=None):
     metrics = [
         ('total_pallets_unrounded', 'Unrounded Pallets'),
         ('total_pallets_rounded', 'Rounded Pallets'),
-        ('total_food_pallets', 'Food Pallets'),
-        ('total_pet_food_pallets', 'Pet Food Pallets'),
-        ('total_chemical_pallets', 'Chemical Pallets'),
+        ('total_food_pallets', 'Food Pallets (Unrounded)'),
+        ('total_food_pallets_rounded', 'Food Pallets (Rounded)'),
+        ('total_pet_food_pallets', 'Pet Food Pallets (Unrounded)'),
+        ('total_pet_food_pallets_rounded', 'Pet Food Pallets (Rounded)'),
+        ('total_chemical_pallets', 'Chemical Pallets (Unrounded)'),
+        ('total_chemical_pallets_rounded', 'Chemical Pallets (Rounded)'),
         ('total_weight', 'Total Weight (lbs)'),
         ('pallets_per_order', 'Pallets per Order'),
         ('total_orders', 'Total Orders')
@@ -32,7 +35,7 @@ def compute_detailed_statistics(cust_df, group_by_col=None):
             if col_name not in sub_df.columns or sub_df[col_name].empty:
                 continue
             series = sub_df[col_name].dropna().astype(float)
-            if series.empty or (series == 0).all() and col_name in ['total_food_pallets', 'total_pet_food_pallets', 'total_chemical_pallets', 'total_weight']:
+            if series.empty or (series == 0).all() and col_name in ['total_food_pallets', 'total_food_pallets_rounded', 'total_pet_food_pallets', 'total_pet_food_pallets_rounded', 'total_chemical_pallets', 'total_chemical_pallets_rounded', 'total_weight']:
                 continue
             
             n = len(series)
@@ -88,9 +91,12 @@ def generate_distribution_figure(cust_df, raw_df=None, selected_day='All Days', 
     label_map = {
         'total_pallets_unrounded': ('Total Pallets (Unrounded)', 'pallets', 'order_pallets'),
         'total_pallets_rounded': ('Total Pallets (Rounded)', 'rounded plts', 'order_pallets_rounded'),
-        'total_food_pallets': ('Food Pallets', 'food plts', 'food_pallets'),
-        'total_pet_food_pallets': ('Pet Food Pallets', 'pet plts', 'pet_food_pallets'),
-        'total_chemical_pallets': ('Chemical Pallets', 'chem plts', 'chemical_pallets'),
+        'total_food_pallets': ('Food Pallets (Unrounded)', 'food plts', 'food_pallets'),
+        'total_food_pallets_rounded': ('Food Pallets (Rounded)', 'rounded food plts', 'food_pallets'),
+        'total_pet_food_pallets': ('Pet Food Pallets (Unrounded)', 'pet plts', 'pet_food_pallets'),
+        'total_pet_food_pallets_rounded': ('Pet Food Pallets (Rounded)', 'rounded pet plts', 'pet_food_pallets'),
+        'total_chemical_pallets': ('Chemical Pallets (Unrounded)', 'chem plts', 'chemical_pallets'),
+        'total_chemical_pallets_rounded': ('Chemical Pallets (Rounded)', 'rounded chem plts', 'chemical_pallets'),
         'total_weight': ('Total Weight', 'lbs', 'order_weight'),
         'pallets_per_order': ('Average Pallets per Order', 'plts/order', 'order_pallets'),
         'total_orders': ('Total Orders', 'orders', 'order_pallets')

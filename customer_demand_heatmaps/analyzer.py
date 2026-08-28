@@ -182,19 +182,28 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
         city_borough=('city_borough', 'first')
     ).reset_index()
 
-    # Apply per-order rounding to the consolidated order demand
+    # Apply per-order rounding to the consolidated order demand and each commodity
     if rounding_mode == 'ceil':
         order_grouped['order_pallets_rounded'] = order_grouped['order_pallets'].apply(lambda x: math.ceil(x) if pd.notna(x) else 0)
+        order_grouped['food_pallets_rounded'] = order_grouped['food_pallets'].apply(lambda x: math.ceil(x) if pd.notna(x) else 0)
+        order_grouped['pet_food_pallets_rounded'] = order_grouped['pet_food_pallets'].apply(lambda x: math.ceil(x) if pd.notna(x) else 0)
+        order_grouped['chemical_pallets_rounded'] = order_grouped['chemical_pallets'].apply(lambda x: math.ceil(x) if pd.notna(x) else 0)
     else:
         order_grouped['order_pallets_rounded'] = order_grouped['order_pallets'].round()
+        order_grouped['food_pallets_rounded'] = order_grouped['food_pallets'].round()
+        order_grouped['pet_food_pallets_rounded'] = order_grouped['pet_food_pallets'].round()
+        order_grouped['chemical_pallets_rounded'] = order_grouped['chemical_pallets'].round()
 
     # 3. Stage 2: Aggregate across all delivery dates for each customer
     grouped = order_grouped.groupby(['customer_id', 'customer_name', 'latitude', 'longitude']).agg(
         total_pallets_unrounded=('order_pallets', 'sum'),
         total_pallets_rounded=('order_pallets_rounded', 'sum'),
         total_food_pallets=('food_pallets', 'sum'),
+        total_food_pallets_rounded=('food_pallets_rounded', 'sum'),
         total_pet_food_pallets=('pet_food_pallets', 'sum'),
+        total_pet_food_pallets_rounded=('pet_food_pallets_rounded', 'sum'),
         total_chemical_pallets=('chemical_pallets', 'sum'),
+        total_chemical_pallets_rounded=('chemical_pallets_rounded', 'sum'),
         total_weight=('order_weight', 'sum'),
         total_orders=('order_date_key', 'count'),
         address=('address', 'first'),
@@ -204,8 +213,11 @@ def aggregate_customer_demands(df, selected_day='All Days', rounding_mode='ceil'
     grouped['total_pallets_unrounded'] = grouped['total_pallets_unrounded'].round(2)
     grouped['total_pallets_rounded'] = grouped['total_pallets_rounded'].astype(int)
     grouped['total_food_pallets'] = grouped['total_food_pallets'].round(2)
+    grouped['total_food_pallets_rounded'] = grouped['total_food_pallets_rounded'].astype(int)
     grouped['total_pet_food_pallets'] = grouped['total_pet_food_pallets'].round(2)
+    grouped['total_pet_food_pallets_rounded'] = grouped['total_pet_food_pallets_rounded'].astype(int)
     grouped['total_chemical_pallets'] = grouped['total_chemical_pallets'].round(2)
+    grouped['total_chemical_pallets_rounded'] = grouped['total_chemical_pallets_rounded'].astype(int)
     grouped['total_weight'] = grouped['total_weight'].round(2)
     grouped['pallets_per_order'] = (grouped['total_pallets_unrounded'] / grouped['total_orders']).round(2)
     grouped['day_of_week'] = selected_day

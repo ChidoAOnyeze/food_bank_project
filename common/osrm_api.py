@@ -144,9 +144,9 @@ class OSRMClient:
         resp.raise_for_status()
         return resp.json()
 
-    def get_distance_matrix(self, locations, chunk_size: int = 50, timeout: float = 15.0):
+    def get_matrix(self, locations, metric="distance", chunk_size: int = 50, timeout: float = 15.0):
         """
-        Builds a full distance matrix (in meters) for locations using the OSRM Table API.
+        Builds a full matrix (in meters for 'distance' or seconds for 'time') for locations using the OSRM Table API.
         """
         num_nodes = len(locations)
         matrix = [[0] * num_nodes for _ in range(num_nodes)]
@@ -154,15 +154,17 @@ class OSRMClient:
         # If total stops fits in single query (e.g. <= 100)
         if num_nodes <= chunk_size:
             try:
-                data = self.fetch_table(locations, annotations="distance", timeout=timeout)
-                distances = data.get("distances", [])
-                if distances and len(distances) == num_nodes:
+                data = self.fetch_table(locations, annotations="distance,duration", timeout=timeout)
+                target_key = "durations" if metric == "time" else "distances"
+                items = data.get(target_key, [])
+                if items and len(items) == num_nodes:
                     for i in range(num_nodes):
                         for j in range(num_nodes):
-                            if distances[i][j] is not None:
-                                matrix[i][j] = int(distances[i][j])
+                            if items[i][j] is not None:
+                                matrix[i][j] = int(items[i][j])
                             else:
-                                matrix[i][j] = int(geodesic(locations[i], locations[j]).meters * 1.5)
+                                d_m = geodesic(locations[i], locations[j]).meters * 1.5
+                                matrix[i][j] = int(d_m / 8.33) if metric == "time" else int(d_m)
                     return matrix
             except Exception as e:
                 print(f"[OSRM API Error] Table query failed: {e}")
@@ -172,8 +174,12 @@ class OSRMClient:
             for j in range(num_nodes):
                 if i == j:
                     continue
-                matrix[i][j] = int(geodesic(locations[i], locations[j]).meters * 1.5)
+                d_m = geodesic(locations[i], locations[j]).meters * 1.5
+                matrix[i][j] = int(d_m / 8.33) if metric == "time" else int(d_m)
         return matrix
+
+    def get_distance_matrix(self, locations, metric="distance", chunk_size: int = 50, timeout: float = 15.0):
+        return self.get_matrix(locations, metric=metric, chunk_size=chunk_size, timeout=timeout)
 
 
 # Default singleton instance

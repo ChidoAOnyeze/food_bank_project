@@ -4,8 +4,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import io
 import base64
+import matplotlib.pyplot as plt
 from streamlit_folium import st_folium
 from validator import DataValidationError
 from analyzer import load_and_preprocess_orders, aggregate_customer_demands, get_available_days
@@ -191,8 +193,9 @@ with st.sidebar.expander("Heatmap Map Settings", expanded=False):
 available_days = get_available_days(raw_df)
 
 # Tabs
-tab_map, tab_stats = st.tabs([
+tab_map, tab_compare, tab_stats = st.tabs([
     "Geographic Heatmaps",
+    "Pallet Rounding Comparison (Chemicals & Pet Food)",
     "Statistical Distributions & Charts"
 ])
 
@@ -221,11 +224,14 @@ with tab_map:
             'total_pallets_rounded': '2. Total Rounded Pallets (Per-Order Rounded)',
         }
         if 'food_pallets' in raw_df.columns and raw_df['food_pallets'].sum() > 0:
-            metric_options['total_food_pallets'] = f"{len(metric_options)+1}. Food Pallets"
+            metric_options['total_food_pallets'] = f"{len(metric_options)+1}. Food Pallets (Unrounded)"
+            metric_options['total_food_pallets_rounded'] = f"{len(metric_options)+1}. Food Pallets (Rounded)"
         if 'pet_food_pallets' in raw_df.columns and raw_df['pet_food_pallets'].sum() > 0:
-            metric_options['total_pet_food_pallets'] = f"{len(metric_options)+1}. Pet Food Pallets"
+            metric_options['total_pet_food_pallets'] = f"{len(metric_options)+1}. Pet Food Pallets (Unrounded)"
+            metric_options['total_pet_food_pallets_rounded'] = f"{len(metric_options)+1}. Pet Food Pallets (Rounded)"
         if 'chemical_pallets' in raw_df.columns and raw_df['chemical_pallets'].sum() > 0:
-            metric_options['total_chemical_pallets'] = f"{len(metric_options)+1}. Chemical Pallets"
+            metric_options['total_chemical_pallets'] = f"{len(metric_options)+1}. Chemical Pallets (Unrounded)"
+            metric_options['total_chemical_pallets_rounded'] = f"{len(metric_options)+1}. Chemical Pallets (Rounded)"
         if 'order_weight' in raw_df.columns and raw_df['order_weight'].sum() > 0:
             metric_options['total_weight'] = f"{len(metric_options)+1}. Total Weight (lbs)"
             
@@ -245,20 +251,59 @@ with tab_map:
     if cust_summary.empty:
         st.warning(f"No delivery orders found for **{selected_day}** in this dataset.")
     else:
-        # KPI Cards
-        total_unrounded = cust_summary['total_pallets_unrounded'].sum()
-        total_rounded = cust_summary['total_pallets_rounded'].sum()
-        total_orders = cust_summary['total_orders'].sum()
-        active_custs = len(cust_summary)
-        avg_ppo = (total_unrounded / total_orders) if total_orders > 0 else 0.0
+        # Dynamic KPI summary overview for the selected heatmap metric
+        actual_col = selected_metric_key if selected_metric_key in cust_summary.columns else 'total_pallets_unrounded'
+        metric_series = cust_summary[actual_col].dropna().astype(float) if not cust_summary.empty else pd.Series([0.0])
+        
+        m_unit = METRIC_UNITS.get(selected_metric_key, 'units')
+        m_label = METRIC_LABELS.get(selected_metric_key, selected_metric_key)
 
-        st.markdown(f"#### Summary Overview for **{selected_day}**")
+        m_sum = metric_series.sum()
+        m_mean = metric_series.mean() if not metric_series.empty else 0.0
+        m_median = metric_series.median() if not metric_series.empty else 0.0
+        m_max = metric_series.max() if not metric_series.empty else 0.0
+        
+        active_with_metric = int((metric_series > 0).sum())
+        total_active_custs = len(cust_summary)
+        total_orders = int(cust_summary['total_orders'].sum()) if 'total_orders' in cust_summary.columns else 0
+
+        st.markdown(f"#### Summary Overview for **{selected_day}** — *{m_label}*")
         k1, k2, k3, k4, k5 = st.columns(5)
-        k1.metric("Unrounded Pallets", f"{total_unrounded:,.2f}")
-        k2.metric("Rounded Pallets", f"{total_rounded:,}")
-        k3.metric("Total Orders", f"{total_orders:,}")
-        k4.metric("Active Customers", f"{active_custs:,}")
-        k5.metric("Avg Pallets / Order", f"{avg_ppo:.2f}")
+        
+        if selected_metric_key == 'pallets_per_order':
+            tot_unrounded = cust_summary['total_pallets_unrounded'].sum() if 'total_pallets_unrounded' in cust_summary.columns else 0.0
+            tot_orders = cust_summary['total_orders'].sum() if 'total_orders' in cust_summary.columns else 0
+            overall_ppo = (tot_unrounded / tot_orders) if tot_orders > 0 else 0.0
+            k1.metric("Overall Pallets/Order", f"{overall_ppo:.2f} plts/ord")
+            k2.metric("Mean per Customer", f"{m_mean:.2f} plts")
+            k3.metric("Median per Customer", f"{m_median:.2f} plts")
+            k4.metric("Max Peak Customer", f"{m_max:.2f} plts")
+            k5.metric("Active Customers", f"{total_active_custs:,}", help=f"{total_orders:,} total orders")
+        elif selected_metric_key == 'total_orders':
+            k1.metric("Total Orders", f"{int(m_sum):,}")
+            k2.metric("Mean Orders / Cust", f"{m_mean:.1f}")
+            k3.metric("Median Orders / Cust", f"{m_median:.1f}")
+            k4.metric("Max Orders (Single Cust)", f"{int(m_max):,}")
+            k5.metric("Active Customers", f"{total_active_custs:,}")
+        elif selected_metric_key == 'total_weight':
+            k1.metric("Total Weight", f"{m_sum:,.0f} lbs", help=f"~{m_sum/2000.0:,.1f} tons")
+            k2.metric("Mean per Customer", f"{m_mean:,.0f} lbs")
+            k3.metric("Median per Customer", f"{m_median:,.0f} lbs")
+            k4.metric("Max Peak Customer", f"{m_max:,.0f} lbs")
+            k5.metric("Active Customers", f"{active_with_metric:,}", help=f"{total_active_custs:,} total active customer sites across all categories")
+        elif selected_metric_key == 'total_pallets_rounded':
+            k1.metric("Total Rounded Pallets", f"{int(m_sum):,}")
+            k2.metric("Mean per Customer", f"{m_mean:.2f}")
+            k3.metric("Median per Customer", f"{m_median:.1f}")
+            k4.metric("Max Peak Customer", f"{int(m_max):,}")
+            k5.metric("Active Customers", f"{active_with_metric:,}", help=f"{total_orders:,} total orders")
+        else: # total_pallets_unrounded, total_food_pallets, total_pet_food_pallets, total_chemical_pallets
+            short_name = m_label.replace('Total ', '').replace(' Consumed (Unrounded)', '')
+            k1.metric(f"Total {short_name}", f"{m_sum:,.2f} plts")
+            k2.metric("Mean per Customer", f"{m_mean:,.2f} plts")
+            k3.metric("Median per Customer", f"{m_median:,.2f} plts")
+            k4.metric("Max Peak Customer", f"{m_max:,.2f} plts")
+            k5.metric("Active Customers", f"{active_with_metric:,}", help=f"{total_active_custs:,} total active customer sites | {total_orders:,} total orders")
 
         # Map display
         st.markdown("---")
@@ -288,8 +333,10 @@ with tab_map:
         st.subheader(f"Customer Demand Data ({selected_day})")
 
         display_cols = ['customer_name', 'customer_id', 'city_borough', 'address']
+        if actual_col in cust_summary.columns and actual_col not in display_cols:
+            display_cols.append(actual_col)
         for c in ['total_pallets_unrounded', 'total_pallets_rounded', 'total_food_pallets', 'total_pet_food_pallets', 'total_chemical_pallets', 'total_weight', 'pallets_per_order', 'total_orders']:
-            if c in cust_summary.columns and (cust_summary[c] > 0).any():
+            if c in cust_summary.columns and (cust_summary[c] > 0).any() and c not in display_cols:
                 display_cols.append(c)
         display_cols.extend(['latitude', 'longitude'])
 
@@ -307,7 +354,169 @@ with tab_map:
         )
 
 # =========================================================================
-# TAB 2: STATISTICAL DISTRIBUTIONS & BAR CHARTS (MEANS & MEDIANS)
+# TAB 2: PALLET ROUNDING COMPARISON (CHEMICALS, PET FOOD & FOOD)
+# =========================================================================
+with tab_compare:
+    st.markdown("### Pallet Volume vs. Rounded Pallet Demand Analysis")
+    st.markdown(
+        "Compare raw unrounded pallet consumption against rounded truck pallet requirements across the entire period "
+        "and broken down by commodity: **Chemicals**, **Pet Food**, **Food**, and **Total Fleet Demand**."
+    )
+
+    cmp_col_day, cmp_col_mode = st.columns([1.2, 1])
+    with cmp_col_day:
+        selected_cmp_day = st.selectbox(
+            "Filter Comparison by Day of Week:",
+            options=available_days,
+            index=0,
+            key="cmp_day_select"
+        )
+    with cmp_col_mode:
+        st.info(f"Active Rounding Rule: **{round_key.title()}** (`{round_key}`) — Configurable in sidebar")
+
+    cmp_df = get_cached_customer_summary(raw_df, selected_cmp_day, round_key)
+
+    if cmp_df.empty:
+        st.warning(f"No customer delivery data available for **{selected_cmp_day}**.")
+    else:
+        chem_unround = float(cmp_df['total_chemical_pallets'].sum()) if 'total_chemical_pallets' in cmp_df.columns else 0.0
+        chem_round = int(cmp_df['total_chemical_pallets_rounded'].sum()) if 'total_chemical_pallets_rounded' in cmp_df.columns else 0
+        chem_diff = chem_round - chem_unround
+        chem_pct = (chem_diff / chem_unround * 100) if chem_unround > 0 else 0.0
+        chem_active = int((cmp_df['total_chemical_pallets'] > 0).sum()) if 'total_chemical_pallets' in cmp_df.columns else 0
+
+        pet_unround = float(cmp_df['total_pet_food_pallets'].sum()) if 'total_pet_food_pallets' in cmp_df.columns else 0.0
+        pet_round = int(cmp_df['total_pet_food_pallets_rounded'].sum()) if 'total_pet_food_pallets_rounded' in cmp_df.columns else 0
+        pet_diff = pet_round - pet_unround
+        pet_pct = (pet_diff / pet_unround * 100) if pet_unround > 0 else 0.0
+        pet_active = int((cmp_df['total_pet_food_pallets'] > 0).sum()) if 'total_pet_food_pallets' in cmp_df.columns else 0
+
+        food_unround = float(cmp_df['total_food_pallets'].sum()) if 'total_food_pallets' in cmp_df.columns else 0.0
+        food_round = int(cmp_df['total_food_pallets_rounded'].sum()) if 'total_food_pallets_rounded' in cmp_df.columns else 0
+        food_diff = food_round - food_unround
+        food_pct = (food_diff / food_unround * 100) if food_unround > 0 else 0.0
+        food_active = int((cmp_df['total_food_pallets'] > 0).sum()) if 'total_food_pallets' in cmp_df.columns else 0
+
+        tot_unround = float(cmp_df['total_pallets_unrounded'].sum()) if 'total_pallets_unrounded' in cmp_df.columns else 0.0
+        tot_round = int(cmp_df['total_pallets_rounded'].sum()) if 'total_pallets_rounded' in cmp_df.columns else 0
+        tot_diff = tot_round - tot_unround
+        tot_pct = (tot_diff / tot_unround * 100) if tot_unround > 0 else 0.0
+        tot_active = len(cmp_df)
+
+        st.markdown(f"#### Commodity Pallet Breakdown ({selected_cmp_day})")
+        cc1, cc2, cc3, cc4 = st.columns(4)
+        with cc1:
+            st.metric("Chemical Pallets", f"{chem_unround:,.2f} plts", delta=f"+{chem_diff:,.2f} plts ({chem_pct:+.1f}%)", delta_color="inverse")
+            st.caption(f"**Rounded:** `{chem_round:,} plts` | **Active Sites:** `{chem_active:,}`")
+        with cc2:
+            st.metric("Pet Food Pallets", f"{pet_unround:,.2f} plts", delta=f"+{pet_diff:,.2f} plts ({pet_pct:+.1f}%)", delta_color="inverse")
+            st.caption(f"**Rounded:** `{pet_round:,} plts` | **Active Sites:** `{pet_active:,}`")
+        with cc3:
+            st.metric("Food Pallets", f"{food_unround:,.2f} plts", delta=f"+{food_diff:,.2f} plts ({food_pct:+.1f}%)", delta_color="inverse")
+            st.caption(f"**Rounded:** `{food_round:,} plts` | **Active Sites:** `{food_active:,}`")
+        with cc4:
+            st.metric("Total Pallets", f"{tot_unround:,.2f} plts", delta=f"+{tot_diff:,.2f} plts ({tot_pct:+.1f}%)", delta_color="inverse")
+            st.caption(f"**Rounded:** `{tot_round:,} plts` | **Active Sites:** `{tot_active:,}`")
+
+        st.markdown("---")
+        st.subheader("Visual Pallet Comparison Charts")
+
+        fig_comp, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5), facecolor='#ffffff')
+
+        categories = ['Chemicals', 'Pet Food', 'Food', 'Total Fleet']
+        unrounded_vals = [chem_unround, pet_unround, food_unround, tot_unround]
+        rounded_vals = [chem_round, pet_round, food_round, tot_round]
+
+        x = np.arange(len(categories))
+        width = 0.35
+
+        rects1 = ax1.bar(x - width/2, unrounded_vals, width, label='Unrounded Pallets', color='#3b82f6', edgecolor='#1d4ed8')
+        rects2 = ax1.bar(x + width/2, rounded_vals, width, label='Rounded Pallets', color='#f59e0b', edgecolor='#d97706')
+
+        ax1.set_title(f'Pallet Volume by Commodity: Unrounded vs. Rounded ({selected_cmp_day})', fontsize=12, fontweight='bold', pad=12)
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(categories, fontweight='bold')
+        ax1.set_ylabel('Pallets', fontsize=11)
+        ax1.legend(frameon=True, facecolor='#f8fafc')
+        ax1.grid(axis='y', linestyle='--', alpha=0.5)
+
+        for rect in rects1:
+            h = rect.get_height()
+            if h > 0:
+                ax1.annotate(f'{h:,.1f}', xy=(rect.get_x() + rect.get_width() / 2, h), xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=9)
+        for rect in rects2:
+            h = rect.get_height()
+            if h > 0:
+                ax1.annotate(f'{h:,.0f}', xy=(rect.get_x() + rect.get_width() / 2, h), xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+        days_list = [d for d in available_days if d != 'All Days']
+        if len(days_list) > 1:
+            chem_unround_days = []
+            chem_round_days = []
+            pet_unround_days = []
+            pet_round_days = []
+            for d in days_list:
+                d_df = get_cached_customer_summary(raw_df, d, round_key)
+                chem_unround_days.append(d_df['total_chemical_pallets'].sum() if 'total_chemical_pallets' in d_df.columns else 0.0)
+                chem_round_days.append(d_df['total_chemical_pallets_rounded'].sum() if 'total_chemical_pallets_rounded' in d_df.columns else 0)
+                pet_unround_days.append(d_df['total_pet_food_pallets'].sum() if 'total_pet_food_pallets' in d_df.columns else 0.0)
+                pet_round_days.append(d_df['total_pet_food_pallets_rounded'].sum() if 'total_pet_food_pallets_rounded' in d_df.columns else 0)
+
+            x_d = np.arange(len(days_list))
+            w_d = 0.2
+            ax2.bar(x_d - 1.5*w_d, chem_unround_days, w_d, label='Chemicals (Unrounded)', color='#06b6d4', alpha=0.85)
+            ax2.bar(x_d - 0.5*w_d, chem_round_days, w_d, label='Chemicals (Rounded)', color='#0891b2', edgecolor='#164e63')
+            ax2.bar(x_d + 0.5*w_d, pet_unround_days, w_d, label='Pet Food (Unrounded)', color='#a855f7', alpha=0.85)
+            ax2.bar(x_d + 1.5*w_d, pet_round_days, w_d, label='Pet Food (Rounded)', color='#7e22ce', edgecolor='#581c87')
+            ax2.set_title('Chemicals & Pet Food Across Days of the Week', fontsize=12, fontweight='bold', pad=12)
+            ax2.set_xticks(x_d)
+            ax2.set_xticklabels(days_list, fontweight='bold')
+            ax2.set_ylabel('Pallets', fontsize=11)
+            ax2.legend(frameon=True, facecolor='#f8fafc', fontsize=8.5)
+            ax2.grid(axis='y', linestyle='--', alpha=0.5)
+        else:
+            deltas = (cmp_df['total_pallets_rounded'] - cmp_df['total_pallets_unrounded']).dropna()
+            ax2.hist(deltas, bins=15, color='#8b5cf6', edgecolor='white', alpha=0.85)
+            ax2.set_title('Distribution of Customer Rounding Overhead', fontsize=12, fontweight='bold', pad=12)
+            ax2.set_xlabel('Rounding Overhead (Rounded - Unrounded Pallets)', fontsize=11)
+            ax2.set_ylabel('Customer Count', fontsize=11)
+            ax2.grid(axis='y', linestyle='--', alpha=0.5)
+
+        plt.tight_layout()
+        st.pyplot(fig_comp)
+
+        st.markdown("---")
+        st.subheader(f"Customer Rounding Comparison Data ({selected_cmp_day})")
+
+        comp_table_df = cmp_df.copy()
+        comp_table_df['chemical_rounding_overhead'] = (comp_table_df['total_chemical_pallets_rounded'] - comp_table_df['total_chemical_pallets']).round(2)
+        comp_table_df['pet_food_rounding_overhead'] = (comp_table_df['total_pet_food_pallets_rounded'] - comp_table_df['total_pet_food_pallets']).round(2)
+        comp_table_df['food_rounding_overhead'] = (comp_table_df['total_food_pallets_rounded'] - comp_table_df['total_food_pallets']).round(2)
+        comp_table_df['total_rounding_overhead'] = (comp_table_df['total_pallets_rounded'] - comp_table_df['total_pallets_unrounded']).round(2)
+
+        tbl_cols = [
+            'customer_name', 'customer_id', 'city_borough', 'address',
+            'total_chemical_pallets', 'total_chemical_pallets_rounded', 'chemical_rounding_overhead',
+            'total_pet_food_pallets', 'total_pet_food_pallets_rounded', 'pet_food_rounding_overhead',
+            'total_food_pallets', 'total_food_pallets_rounded', 'food_rounding_overhead',
+            'total_pallets_unrounded', 'total_pallets_rounded', 'total_rounding_overhead'
+        ]
+
+        tbl_cols_present = [c for c in tbl_cols if c in comp_table_df.columns]
+        st.dataframe(comp_table_df[tbl_cols_present])
+
+        csv_comp_buf = io.StringIO()
+        comp_table_df[tbl_cols_present].to_csv(csv_comp_buf, index=False)
+        st.download_button(
+            label=f"Download {selected_cmp_day} Pallet Comparison CSV",
+            data=csv_comp_buf.getvalue().encode('utf-8'),
+            file_name=f"pallet_rounding_comparison_{selected_cmp_day.lower().replace(' ', '_')}.csv",
+            mime="text/csv",
+            type="primary"
+        )
+
+# =========================================================================
+# TAB 3: STATISTICAL DISTRIBUTIONS & BAR CHARTS (MEANS & MEDIANS)
 # =========================================================================
 with tab_stats:
     st.markdown("### Comprehensive Statistical Distribution & Breakdown")
@@ -323,11 +532,14 @@ with tab_stats:
             'total_pallets_rounded': '2. Total Rounded Pallets (Per-Order Rounded)',
         }
         if 'food_pallets' in raw_df.columns and raw_df['food_pallets'].sum() > 0:
-            stat_metric_options['total_food_pallets'] = f"{len(stat_metric_options)+1}. Food Pallets"
+            stat_metric_options['total_food_pallets'] = f"{len(stat_metric_options)+1}. Food Pallets (Unrounded)"
+            stat_metric_options['total_food_pallets_rounded'] = f"{len(stat_metric_options)+1}. Food Pallets (Rounded)"
         if 'pet_food_pallets' in raw_df.columns and raw_df['pet_food_pallets'].sum() > 0:
-            stat_metric_options['total_pet_food_pallets'] = f"{len(stat_metric_options)+1}. Pet Food Pallets"
+            stat_metric_options['total_pet_food_pallets'] = f"{len(stat_metric_options)+1}. Pet Food Pallets (Unrounded)"
+            stat_metric_options['total_pet_food_pallets_rounded'] = f"{len(stat_metric_options)+1}. Pet Food Pallets (Rounded)"
         if 'chemical_pallets' in raw_df.columns and raw_df['chemical_pallets'].sum() > 0:
-            stat_metric_options['total_chemical_pallets'] = f"{len(stat_metric_options)+1}. Chemical Pallets"
+            stat_metric_options['total_chemical_pallets'] = f"{len(stat_metric_options)+1}. Chemical Pallets (Unrounded)"
+            stat_metric_options['total_chemical_pallets_rounded'] = f"{len(stat_metric_options)+1}. Chemical Pallets (Rounded)"
         if 'order_weight' in raw_df.columns and raw_df['order_weight'].sum() > 0:
             stat_metric_options['total_weight'] = f"{len(stat_metric_options)+1}. Total Weight (lbs)"
             
